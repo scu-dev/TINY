@@ -5,7 +5,7 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
+#include "GLOBALS.H"
 
 /* set NO_PARSE to TRUE to get a scanner-only compiler */
 #define NO_PARSE FALSE
@@ -17,15 +17,15 @@
  */
 #define NO_CODE FALSE
 
-#include "util.h"
+#include "UTIL.H"
 #if NO_PARSE
-#include "scan.h"
+#include "SCAN.H"
 #else
-#include "parse.h"
+#include "PARSE.H"
 #if !NO_ANALYZE
-#include "analyze.h"
+#include "ANALYZE.H"
 #if !NO_CODE
-#include "cgen.h"
+#include "CGEN.H"
 #endif
 #endif
 #endif

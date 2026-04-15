@@ -6,9 +6,9 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
-#include "symtab.h"
-#include "analyze.h"
+#include "GLOBALS.H"
+#include "SYMTAB.H"
+#include "ANALYZE.H"
 
 /* counter for variable memory locations */
 static int location = 0;

@@ -1,61 +1,74 @@
 #
 # makefile for TINY
-# Borland C Version
-# K. Louden 2/3/98
+# Updated for GNU make with MSVC on Windows and gcc on Unix-like systems
 #
 
-CC = bcc
+ifeq ($(OS),Windows_NT)
+SHELL = cmd.exe
+MAKESHELL = cmd.exe
+VSINSTALL := $(shell "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
+ifeq ($(strip $(VSINSTALL)),)
+$(error Could not locate Visual Studio C++ build tools. Install them or run from a Developer Command Prompt)
+endif
 
-CFLAGS = 
+EXEEXT = .exe
+OBJEXT = .obj
+SETUPVC = call "$(VSINSTALL)\VC\Auxiliary\Build\vcvars64.bat" >nul &&
+COMPILE.c = $(SETUPVC) cl /nologo /TC /c $< /Fo$@
+LINK.tiny = $(SETUPVC) cl /nologo /Fe$@ $(OBJS)
+LINK.tm = $(SETUPVC) cl /nologo /TC /Fe$@ TM/tm.c
+CLEAN_CMD = -del /Q tiny$(EXEEXT) tm$(EXEEXT) $(OBJS) tm.obj 2>nul
+else
+EXEEXT =
+OBJEXT = .o
+CC = gcc
+COMPILE.c = $(CC) -x c -c $< -o $@
+LINK.tiny = $(CC) -o $@ $(OBJS)
+LINK.tm = $(CC) -o $@ TM/tm.c
+CLEAN_CMD = rm -f tiny$(EXEEXT) tm$(EXEEXT) $(OBJS) tm.obj
+endif
 
-OBJS = main.obj util.obj scan.obj parse.obj symtab.obj analyze.obj code.obj cgen.obj
+TINY_SRCS = MAIN.C UTIL.C SCAN.C PARSE.C SYMTAB.C ANALYZE.C CODE.C CGEN.C
+OBJS = $(addsuffix $(OBJEXT),$(basename $(TINY_SRCS)))
 
-tiny.exe: $(OBJS)
-	$(CC) $(CFLAGS) -etiny $(OBJS)
+.PHONY: all clean tiny tm
 
-main.obj: main.c globals.h util.h scan.h parse.h analyze.h cgen.h
-	$(CC) $(CFLAGS) -c main.c
+all: tiny$(EXEEXT) tm$(EXEEXT)
 
-util.obj: util.c util.h globals.h
-	$(CC) $(CFLAGS) -c util.c
+tiny$(EXEEXT): $(OBJS)
+	$(LINK.tiny)
 
-scan.obj: scan.c scan.h util.h globals.h
-	$(CC) $(CFLAGS) -c scan.c
+MAIN$(OBJEXT): MAIN.C GLOBALS.H UTIL.H SCAN.H PARSE.H ANALYZE.H CGEN.H
+	$(COMPILE.c)
 
-parse.obj: parse.c parse.h scan.h globals.h util.h
-	$(CC) $(CFLAGS) -c parse.c
+UTIL$(OBJEXT): UTIL.C UTIL.H GLOBALS.H
+	$(COMPILE.c)
 
-symtab.obj: symtab.c symtab.h
-	$(CC) $(CFLAGS) -c symtab.c
+SCAN$(OBJEXT): SCAN.C SCAN.H UTIL.H GLOBALS.H
+	$(COMPILE.c)
 
-analyze.obj: analyze.c globals.h symtab.h analyze.h
-	$(CC) $(CFLAGS) -c analyze.c
+PARSE$(OBJEXT): PARSE.C PARSE.H SCAN.H GLOBALS.H UTIL.H
+	$(COMPILE.c)
 
-code.obj: code.c code.h globals.h
-	$(CC) $(CFLAGS) -c code.c
+SYMTAB$(OBJEXT): SYMTAB.C SYMTAB.H
+	$(COMPILE.c)
 
-cgen.obj: cgen.c globals.h symtab.h code.h cgen.h
-	$(CC) $(CFLAGS) -c cgen.c
+ANALYZE$(OBJEXT): ANALYZE.C GLOBALS.H SYMTAB.H ANALYZE.H
+	$(COMPILE.c)
+
+CODE$(OBJEXT): CODE.C CODE.H GLOBALS.H
+	$(COMPILE.c)
+
+CGEN$(OBJEXT): CGEN.C GLOBALS.H SYMTAB.H CODE.H CGEN.H
+	$(COMPILE.c)
+
+tm$(EXEEXT): TM/tm.c
+	$(LINK.tm)
+
+tiny: tiny$(EXEEXT)
+
+tm: tm$(EXEEXT)
 
 clean:
-	-del tiny.exe
-	-del tm.exe
-	-del main.obj
-	-del util.obj
-	-del scan.obj
-	-del parse.obj
-	-del symtab.obj
-	-del analyze.obj
-	-del code.obj
-	-del cgen.obj
-	-del tm.obj
-
-tm.exe: tm.c
-	$(CC) $(CFLAGS) -etm tm.c
-
-tiny: tiny.exe
-
-tm: tm.exe
-
-all: tiny tm
+	$(CLEAN_CMD)
 

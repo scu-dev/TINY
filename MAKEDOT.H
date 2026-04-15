@@ -1,4 +1,4 @@
-#include "globals.h"
+#include "GLOBALS.H"
 
 /*
 用于递归输出Graphviz(DOT语言)文件

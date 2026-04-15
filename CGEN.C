@@ -7,10 +7,10 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
-#include "symtab.h"
-#include "code.h"
-#include "cgen.h"
+#include "GLOBALS.H"
+#include "SYMTAB.H"
+#include "CODE.H"
+#include "CGEN.H"
 
 /* tmpOffset is the memory offset for temps
    It is decremented each time a temp is

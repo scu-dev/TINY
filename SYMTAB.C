@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "symtab.h"
+#include "SYMTAB.H"
 
 /* SIZE is the size of the hash table */
 #define SIZE 211

@@ -1,4 +1,4 @@
-#include "makedot.h"
+#include "MAKEDOT.H"
 /*
 用于递归输出Graphviz(DOT语言)文件
 输入：输出流、语法树“根节点”、递归深度（仅用作打印记号）

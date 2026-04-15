@@ -5,9 +5,9 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
-#include "util.h"
-#include "scan.h"
+#include "GLOBALS.H"
+#include "UTIL.H"
+#include "SCAN.H"
 
 /* states in scanner DFA */
 typedef enum

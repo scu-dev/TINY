@@ -5,10 +5,10 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
-#include "util.h"
-#include "scan.h"
-#include "parse.h"
+#include "GLOBALS.H"
+#include "UTIL.H"
+#include "SCAN.H"
+#include "PARSE.H"
 
 static TokenType token; /* holds current token */
 

@@ -6,8 +6,8 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
-#include "globals.h"
-#include "util.h"
+#include "GLOBALS.H"
+#include "UTIL.H"
 
 /* Procedure printToken prints a token 
  * and its lexeme to the listing file
