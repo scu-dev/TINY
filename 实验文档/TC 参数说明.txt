@@ -1,0 +1,10 @@
+/* 编译阶段开关 */
+#define NO_PARSE FALSE	// set NO_PARSE to TRUE to get a scanner-only compiler 
+#define NO_ANALYZE FALSE	// set NO_ANALYZE to TRUE to get a parser-only compiler 
+#define NO_CODE FALSE		// set NO_CODE to TRUE to get a compiler that does not generate code
+
+/* 跟踪开关，控制是否在控制台输出跟踪信息，分别用于词法、语法、语义、目标代码生成阶段 */ 
+int TraceScan = FALSE; 
+int TraceParse = FALSE; 
+int TraceAnalyze = FALSE;
+int TraceCode = FALSE;

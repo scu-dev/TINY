@@ -11,7 +11,9 @@
 
 /* states in scanner DFA */
 typedef enum
-   { START,INASSIGN,INCOMMENT,INNUM,INID,DONE }
+   { START,INASSIGN,INBRACECOMMENT,INCOMMENT,INCOMMENTEND,
+     INNUM,INFRAC,INEXPSTART,INEXPSIGN,INEXP,INLEADINGDOT,
+     INID,INSLASH,INBADTOKEN,DONE }
    StateType;
 
 /* lexeme of identifier or reserved word */
@@ -51,6 +53,25 @@ static int getNextChar(void)
 static void ungetNextChar(void)
 { if (!EOF_flag) linepos-- ;}
 
+static void saveChar(int c, int * tokenStringIndex)
+{ if ((*tokenStringIndex < MAXTOKENLEN) && (c != EOF))
+    tokenString[(*tokenStringIndex)++] = (char) c;
+}
+
+static int isTokenDelimiter(int c)
+{ return (c == EOF) || (c == ' ') || (c == '\t') || (c == '\n') ||
+         (c == ':') || (c == '=') || (c == '<') || (c == '>') ||
+         (c == '+') || (c == '-') || (c == '*') || (c == '/') ||
+         (c == '(') || (c == ')') || (c == ';') ||
+         (c == '{') || (c == '}');
+}
+
+static void setTokenString(const char * s, int * tokenStringIndex)
+{ strncpy(tokenString,s,MAXTOKENLEN);
+  tokenString[MAXTOKENLEN] = '\0';
+  *tokenStringIndex = (int) strlen(tokenString);
+}
+
 /* lookup table of reserved words */
 static struct
     { char* str;
@@ -80,7 +101,7 @@ TokenType getToken(void)
 {  /* index for storing into tokenString */
    int tokenStringIndex = 0;
    /* holds current token to be returned */
-   TokenType currentToken;
+   TokenType currentToken = ERROR;
    /* current state - always begins at START */
    StateType state = START;
    /* flag to indicate save to tokenString */
@@ -92,6 +113,8 @@ TokenType getToken(void)
      { case START:
          if (isdigit(c))
            state = INNUM;
+         else if (c == '.')
+           state = INLEADINGDOT;
          else if (isalpha(c))
            state = INID;
          else if (c == ':')
@@ -100,8 +123,10 @@ TokenType getToken(void)
            save = FALSE;
          else if (c == '{')
          { save = FALSE;
-           state = INCOMMENT;
+           state = INBRACECOMMENT;
          }
+         else if (c == '/')
+           state = INSLASH;
          else
          { state = DONE;
            switch (c)
@@ -127,9 +152,6 @@ TokenType getToken(void)
              case '*':
                currentToken = TIMES;
                break;
-             case '/':
-               currentToken = OVER;
-               break;
              case '(':
                currentToken = LPAREN;
                break;
@@ -145,13 +167,33 @@ TokenType getToken(void)
            }
          }
          break;
+       case INBRACECOMMENT:
+         save = FALSE;
+         if (c == EOF)
+         { state = DONE;
+           currentToken = ERROR;
+           setTokenString("unterminated comment",&tokenStringIndex);
+         }
+         else if (c == '}') state = START;
+         break;
        case INCOMMENT:
          save = FALSE;
          if (c == EOF)
          { state = DONE;
-           currentToken = ENDFILE;
+           currentToken = ERROR;
+           setTokenString("unterminated comment",&tokenStringIndex);
          }
-         else if (c == '}') state = START;
+         else if (c == '*') state = INCOMMENTEND;
+         break;
+       case INCOMMENTEND:
+         save = FALSE;
+         if (c == EOF)
+         { state = DONE;
+           currentToken = ERROR;
+           setTokenString("unterminated comment",&tokenStringIndex);
+         }
+         else if (c == '/') state = START;
+         else if (c != '*') state = INCOMMENT;
          break;
        case INASSIGN:
          state = DONE;
@@ -165,12 +207,95 @@ TokenType getToken(void)
          }
          break;
        case INNUM:
-         if (!isdigit(c))
-         { /* backup in the input */
-           ungetNextChar();
+         if (isdigit(c))
+           ;
+         else if (c == '.')
+           state = INFRAC;
+         else if ((c == 'e') || (c == 'E'))
+           state = INEXPSTART;
+         else if (isalpha(c) || (c == '_'))
+         { state = INBADTOKEN;
+           currentToken = ERROR;
+         }
+         else
+         { if (c != EOF) ungetNextChar();
            save = FALSE;
            state = DONE;
            currentToken = NUM;
+         }
+         break;
+       case INFRAC:
+         if (isdigit(c))
+           ;
+         else if ((c == 'e') || (c == 'E'))
+           state = INEXPSTART;
+         else if (isalpha(c) || (c == '_') || (c == '.'))
+         { state = INBADTOKEN;
+           currentToken = ERROR;
+         }
+         else
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = NUM;
+         }
+         break;
+       case INEXPSTART:
+         if ((c == '+') || (c == '-'))
+           state = INEXPSIGN;
+         else if (isdigit(c))
+           state = INEXP;
+         else if (isTokenDelimiter(c))
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = ERROR;
+         }
+         else
+         { state = INBADTOKEN;
+           currentToken = ERROR;
+         }
+         break;
+       case INEXPSIGN:
+         if (isdigit(c))
+           state = INEXP;
+         else if (isTokenDelimiter(c))
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = ERROR;
+         }
+         else
+         { state = INBADTOKEN;
+           currentToken = ERROR;
+         }
+         break;
+       case INEXP:
+         if (isdigit(c))
+           ;
+         else if (isalpha(c) || (c == '_') || (c == '.'))
+         { state = INBADTOKEN;
+           currentToken = ERROR;
+         }
+         else
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = NUM;
+         }
+         break;
+       case INLEADINGDOT:
+         if (isdigit(c))
+           state = INFRAC;
+         else if (isTokenDelimiter(c))
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = ERROR;
+         }
+         else
+         { state = INBADTOKEN;
+           currentToken = ERROR;
          }
          break;
        case INID:
@@ -182,6 +307,27 @@ TokenType getToken(void)
            currentToken = ID;
          }
          break;
+       case INSLASH:
+         if (c == '*')
+         { save = FALSE;
+           tokenStringIndex = 0;
+           state = INCOMMENT;
+         }
+         else
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = OVER;
+         }
+         break;
+       case INBADTOKEN:
+         currentToken = ERROR;
+         if (isTokenDelimiter(c))
+         { if (c != EOF) ungetNextChar();
+           save = FALSE;
+           state = DONE;
+         }
+         break;
        case DONE:
        default: /* should never happen */
          fprintf(listing,"Scanner Bug: state= %d\n",state);
@@ -189,12 +335,12 @@ TokenType getToken(void)
          currentToken = ERROR;
          break;
      }
-     if ((save) && (tokenStringIndex <= MAXTOKENLEN))
-       tokenString[tokenStringIndex++] = (char) c;
+     if (save) saveChar(c,&tokenStringIndex);
      if (state == DONE)
      { tokenString[tokenStringIndex] = '\0';
        if (currentToken == ID)
          currentToken = reservedLookup(tokenString);
+       if (currentToken == ERROR) Error = TRUE;
      }
    }
    if (TraceScan) {
