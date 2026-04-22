@@ -1,0 +1,61 @@
+{ Triangle classifier for experiment 3.
+  Uses <= and >=.
+  Output codes:
+  0 = invalid
+  1 = scalene
+  2 = isosceles
+  3 = equilateral
+}
+
+read a;
+read b;
+read c;
+result := 0;
+
+if a <= 0 then
+  result := 0
+else
+  if b <= 0 then
+    result := 0
+  else
+    if c <= 0 then
+      result := 0
+    else
+      if a + b <= c then
+        result := 0
+      else
+        if a + c <= b then
+          result := 0
+        else
+          if b + c <= a then
+            result := 0
+          else
+            if a = b then
+              if b >= c then
+                if c >= b then
+                  result := 3
+                else
+                  result := 2
+                end
+              else
+                result := 2
+              end
+            else
+              if a = c then
+                result := 2
+              else
+                if b = c then
+                  result := 2
+                else
+                  result := 1
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end;
+
+write result
