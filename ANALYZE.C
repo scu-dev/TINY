@@ -111,8 +111,7 @@ static void checkNode(TreeNode * t)
               (t->child[1]->type != Integer))
             typeError(t,"Op applied to non-integer");
           if ((t->attr.op == EQ) || (t->attr.op == LT) ||
-              (t->attr.op == LE) || (t->attr.op == GT) ||
-              (t->attr.op == GE))
+              (t->attr.op == GT))
             t->type = Boolean;
           else
             t->type = Integer;
