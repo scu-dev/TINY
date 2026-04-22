@@ -11,24 +11,12 @@ read b;
 read c;
 result := 0;
 
-if a < 1 then
-  result := 0
-else
-  if b < 1 then
-    result := 0
-  else
-    if c < 1 then
-      result := 0
-    else
-      if a + b < c + 1 then
-        result := 0
-      else
-        if a + c < b + 1 then
-          result := 0
-        else
-          if b + c < a + 1 then
-            result := 0
-          else
+if a > 0 then
+  if b > 0 then
+    if c > 0 then
+      if a + b > c then
+        if a + c > b then
+          if b + c > a then
             if a = b then
               if b = c then
                 result := 3
@@ -46,11 +34,23 @@ else
                 end
               end
             end
+          else
+            result := 0
           end
+        else
+          result := 0
         end
+      else
+        result := 0
       end
+    else
+      result := 0
     end
+  else
+    result := 0
   end
+else
+  result := 0
 end;
 
 write result
