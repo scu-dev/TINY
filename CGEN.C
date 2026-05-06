@@ -89,6 +89,17 @@ static void genStmt( TreeNode * tree)
          /* now output it */
          emitRO("OUT",ac,0,0,"write ac");
          break;
+      case IntK:
+         { int i;
+           if (TraceCode) emitComment("-> int decl");
+           for (i = 0; i < MAXCHILDREN; i++)
+             if (tree->child[i] != NULL &&
+                 tree->child[i]->nodekind == StmtK &&
+                 tree->child[i]->kind.stmt == AssignK)
+               cGen(tree->child[i]);
+           if (TraceCode) emitComment("<- int decl");
+         }
+         break;
       default:
          break;
     }

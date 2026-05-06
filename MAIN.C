@@ -18,6 +18,7 @@
 #define NO_CODE FALSE
 
 #include "UTIL.H"
+#include "MAKEDOT.H"
 #if NO_PARSE
 #include "SCAN.H"
 #else
@@ -69,6 +70,15 @@ int main( int argc, char * argv[] )
   if (TraceParse) {
     fprintf(listing,"\nSyntax tree:\n");
     printTree(syntaxTree);
+  }
+  /* always generate a Graphviz DOT file for AST visualization */
+  { int fnlen = strcspn(pgm,".");
+    char * dotfile = (char *)calloc(fnlen+5, sizeof(char));
+    strncpy(dotfile,pgm,fnlen);
+    strcat(dotfile,".dot");
+    outputGraphvizFormat(dotfile,syntaxTree);
+    fprintf(listing,"AST written to: %s\n",dotfile);
+    free(dotfile);
   }
 #if !NO_ANALYZE
   if (! Error)

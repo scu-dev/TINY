@@ -11,7 +11,7 @@
 
 /* states in scanner DFA */
 typedef enum
-   { START,INASSIGN,INCOMMENT,INNUM,INID,DONE }
+   { START,INASSIGN,INCOMMENT,INNUM,INID,INLT,INGT,INPP,DONE }
    StateType;
 
 /* lexeme of identifier or reserved word */
@@ -58,7 +58,7 @@ static struct
     } reservedWords[MAXRESERVED]
    = {{"if",IF},{"then",THEN},{"else",ELSE},{"end",END},
       {"repeat",REPEAT},{"until",UNTIL},{"read",READ},
-      {"write",WRITE}};
+      {"write",WRITE},{"int",INT}};
 
 /* lookup an identifier to see if it is a reserved word */
 /* uses linear search */
@@ -113,13 +113,13 @@ TokenType getToken(void)
                currentToken = EQ;
                break;
              case '<':
-               currentToken = LT;
+               state = INLT;
                break;
              case '>':
-               currentToken = GT;
+               state = INGT;
                break;
              case '+':
-               currentToken = PLUS;
+               state = INPP;
                break;
              case '-':
                currentToken = MINUS;
@@ -138,6 +138,9 @@ TokenType getToken(void)
                break;
              case ';':
                currentToken = SEMI;
+               break;
+             case ',':
+               currentToken = COMMA;
                break;
              default:
                currentToken = ERROR;
@@ -180,6 +183,36 @@ TokenType getToken(void)
            save = FALSE;
            state = DONE;
            currentToken = ID;
+         }
+         break;
+       case INLT:
+         state = DONE;
+         if (c == '=')
+           currentToken = LEQ;
+         else
+         { ungetNextChar();
+           save = FALSE;
+           currentToken = LT;
+         }
+         break;
+       case INGT:
+         state = DONE;
+         if (c == '=')
+           currentToken = GEQ;
+         else
+         { ungetNextChar();
+           save = FALSE;
+           currentToken = GT;
+         }
+         break;
+       case INPP:
+         state = DONE;
+         if (c == '+')
+           currentToken = PP;
+         else
+         { ungetNextChar();
+           save = FALSE;
+           currentToken = PLUS;
          }
          break;
        case DONE:

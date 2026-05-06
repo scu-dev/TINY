@@ -55,9 +55,13 @@ static void insertNode( TreeNode * t)
           /* not yet in table, so treat as new definition */
             st_insert(t->attr.name,t->lineno,location++);
           else
-          /* already in table, so ignore location, 
-             add line number of use only */ 
+          /* already in table, so ignore location,
+             add line number of use only */
             st_insert(t->attr.name,t->lineno,0);
+          break;
+        case IntK:
+          /* children (AssignK/IdK) are visited by traverse;
+             their own cases handle symbol insertion */
           break;
         default:
           break;
@@ -111,7 +115,8 @@ static void checkNode(TreeNode * t)
               (t->child[1]->type != Integer))
             typeError(t,"Op applied to non-integer");
           if ((t->attr.op == EQ) || (t->attr.op == LT) ||
-              (t->attr.op == GT))
+              (t->attr.op == LEQ) || (t->attr.op == GT) ||
+              (t->attr.op == GEQ))
             t->type = Boolean;
           else
             t->type = Integer;

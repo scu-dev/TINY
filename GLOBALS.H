@@ -23,17 +23,18 @@
 #endif
 
 /* MAXRESERVED = the number of reserved words */
-#define MAXRESERVED 8
+#define MAXRESERVED 9
 
-typedef enum 
+typedef enum
     /* book-keeping tokens */
    {ENDFILE,ERROR,
     /* reserved words */
     IF,THEN,ELSE,END,REPEAT,UNTIL,READ,WRITE,
     /* multicharacter tokens */
     ID,NUM,
-    /* special symbols */
-    ASSIGN,EQ,LT,GT,PLUS,MINUS,TIMES,OVER,LPAREN,RPAREN,SEMI
+    /* special symbols — order must match optab[] in MAKEDOT.C */
+    ASSIGN,EQ,LT,LEQ,GT,GEQ,PLUS,MINUS,TIMES,OVER,LPAREN,RPAREN,SEMI,
+    COMMA,PP,INT
    } TokenType;
 
 extern FILE* source; /* source code text file */
@@ -47,7 +48,7 @@ extern int lineno; /* source line number for listing */
 /**************************************************/
 
 typedef enum {StmtK,ExpK} NodeKind;
-typedef enum {IfK,RepeatK,AssignK,ReadK,WriteK} StmtKind;
+typedef enum {IfK,RepeatK,AssignK,ReadK,WriteK,IntK} StmtKind;
 typedef enum {OpK,ConstK,IdK} ExpKind;
 
 /* ExpType is used for type checking */

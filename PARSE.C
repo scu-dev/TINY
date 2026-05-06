@@ -20,6 +20,7 @@ static TreeNode * repeat_stmt(void);
 static TreeNode * assign_stmt(void);
 static TreeNode * read_stmt(void);
 static TreeNode * write_stmt(void);
+static TreeNode * int_decl(void);
 static TreeNode * exp(void);
 static TreeNode * simple_exp(void);
 static TreeNode * term(void);
@@ -67,6 +68,7 @@ TreeNode * statement(void)
     case ID : t = assign_stmt(); break;
     case READ : t = read_stmt(); break;
     case WRITE : t = write_stmt(); break;
+    case INT : t = int_decl(); break;
     default : syntaxError("unexpected token -> ");
               printToken(token,tokenString);
               token = getToken();
@@ -124,9 +126,39 @@ TreeNode * write_stmt(void)
   return t;
 }
 
+/* int_decl parses: int ID [:= exp] {, ID [:= exp]}
+ * Each variable becomes a child of the IntK node.
+ * Uninitialized vars become IdK children; initialized
+ * vars become AssignK children (with the expr as child[0]).
+ */
+TreeNode * int_decl(void)
+{ TreeNode * t = newStmtNode(IntK);
+  int i = 0;
+  match(INT);
+  while (token == ID && i < MAXCHILDREN)
+  { char * name = copyString(tokenString);
+    match(ID);
+    if (token == ASSIGN)
+    { TreeNode * a = newStmtNode(AssignK);
+      if (a != NULL) a->attr.name = name;
+      match(ASSIGN);
+      if (a != NULL) a->child[0] = exp();
+      if (t != NULL) t->child[i++] = a;
+    }
+    else
+    { TreeNode * id = newExpNode(IdK);
+      if (id != NULL) id->attr.name = name;
+      if (t != NULL) t->child[i++] = id;
+    }
+    if (token == COMMA) match(COMMA);
+    else break;
+  }
+  return t;
+}
+
 TreeNode * exp(void)
 { TreeNode * t = simple_exp();
-  if ((token==LT)||(token==GT)||(token==EQ)) {
+  if ((token==LT)||(token==LEQ)||(token==GT)||(token==GEQ)||(token==EQ)) {
     TreeNode * p = newExpNode(OpK);
     if (p!=NULL) {
       p->child[0] = t;
@@ -189,6 +221,23 @@ TreeNode * factor(void)
       match(LPAREN);
       t = exp();
       match(RPAREN);
+      break;
+    case MINUS :
+      /* unary minus: -NUM becomes ConstK(-n), -expr becomes OpK(MINUS,0,expr) */
+      match(MINUS);
+      if (token == NUM)
+      { t = newExpNode(ConstK);
+        if (t != NULL) t->attr.val = -atoi(tokenString);
+        match(NUM);
+      }
+      else
+      { t = newExpNode(OpK);
+        if (t != NULL)
+        { t->attr.op = MINUS;
+          t->child[0] = newExpNode(ConstK); /* implicit 0 */
+          t->child[1] = factor();
+        }
+      }
       break;
     default:
       syntaxError("unexpected token -> ");

@@ -27,11 +27,15 @@ void printToken( TokenType token, const char* tokenString )
       break;
     case ASSIGN: fprintf(listing,":=\n"); break;
     case LT: fprintf(listing,"<\n"); break;
+    case LEQ: fprintf(listing,"<=\n"); break;
     case GT: fprintf(listing,">\n"); break;
+    case GEQ: fprintf(listing,">=\n"); break;
     case EQ: fprintf(listing,"=\n"); break;
     case LPAREN: fprintf(listing,"(\n"); break;
     case RPAREN: fprintf(listing,")\n"); break;
     case SEMI: fprintf(listing,";\n"); break;
+    case COMMA: fprintf(listing,",\n"); break;
+    case PP: fprintf(listing,"++\n"); break;
     case PLUS: fprintf(listing,"+\n"); break;
     case MINUS: fprintf(listing,"-\n"); break;
     case TIMES: fprintf(listing,"*\n"); break;
@@ -146,6 +150,9 @@ void printTree( TreeNode * tree )
           break;
         case WriteK:
           fprintf(listing,"Write\n");
+          break;
+        case IntK:
+          fprintf(listing,"Int\n");
           break;
         default:
           fprintf(listing,"Unknown ExpNode kind\n");
