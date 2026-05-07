@@ -1,0 +1,8 @@
+float a := 7.5, b := 2.5;
+float sum := a + b, diff := a - b, product := a * b;
+float quotient := a / b;
+
+write sum;
+write diff;
+write product;
+write quotient

@@ -39,6 +39,7 @@ typedef enum {
    opHALT,    /* RR     halt, operands are ignored */
    opIN,      /* RR     read into reg(r); s and t are ignored */
    opOUT,     /* RR     write from reg(r), s and t are ignored */
+   opOUTS,    /* RR     write string indexed by reg(r) */
    opADD,    /* RR     reg(r) = reg(s)+reg(t) */
    opSUB,    /* RR     reg(r) = reg(s)-reg(t) */
    opMUL,    /* RR     reg(r) = reg(s)*reg(t) */
@@ -75,6 +76,7 @@ typedef struct {
       int iarg1  ;
       int iarg2  ;
       int iarg3  ;
+      double farg2 ;
    } INSTRUCTION;
 
 /******** vars ********/
@@ -84,11 +86,11 @@ int traceflag = FALSE;
 int icountflag = FALSE;
 
 INSTRUCTION iMem [IADDR_SIZE];
-int dMem [DADDR_SIZE];
-int reg [NO_REGS];
+double dMem [DADDR_SIZE];
+double reg [NO_REGS];
 
 char * opCodeTab[]
-        = {"HALT","IN","OUT","ADD","SUB","MUL","DIV","????",
+        = {"HALT","IN","OUT","OUTS","ADD","SUB","MUL","DIV","????",
             /* RR opcodes */
            "LD","ST","????", /* RM opcodes */
            "LDA","LDC","JLT","JLE","JGT","JGE","JEQ","JNE","????"
@@ -107,9 +109,15 @@ char in_Line[LINESIZE] ;
 int lineLen ;
 int inCol  ;
 int num  ;
+double fnum  ;
 char word[WORDSIZE] ;
 char ch  ;
 int done  ;
+
+#define STRING_TABLE_SIZE 256
+#define STRING_SIZE 256
+char stringTable[STRING_TABLE_SIZE][STRING_SIZE];
+int stringTableSet[STRING_TABLE_SIZE];
 
 /********************************************/
 int opClass( int c )
@@ -127,7 +135,11 @@ void writeInstruction ( int loc )
     { case opclRR: printf("%1d,%1d", iMem[loc].iarg2, iMem[loc].iarg3);
                    break;
       case opclRM:
-      case opclRA: printf("%3d(%1d)", iMem[loc].iarg2, iMem[loc].iarg3);
+      case opclRA:
+                   if (iMem[loc].iop == opLDC)
+                      printf("%.10g(%1d)", iMem[loc].farg2, iMem[loc].iarg3);
+                   else
+                      printf("%3d(%1d)", iMem[loc].iarg2, iMem[loc].iarg3);
                    break;
     }
     printf ("\n") ;
@@ -180,6 +192,18 @@ int getNum (void)
 } /* getNum */
 
 /********************************************/
+int getFloatNum (void)
+{ char *endPtr;
+  if (! nonBlank()) return FALSE;
+  fnum = strtod(&in_Line[inCol],&endPtr);
+  if (endPtr == &in_Line[inCol]) return FALSE;
+  inCol = (int)(endPtr - in_Line);
+  if (inCol < lineLen) ch = in_Line[inCol];
+  else ch = ' ';
+  return TRUE;
+} /* getFloatNum */
+
+/********************************************/
 int getWord (void)
 { int temp = FALSE;
   int length = 0;
@@ -218,6 +242,41 @@ int error( char * msg, int lineNo, int instNo)
 } /* error */
 
 /********************************************/
+void readStringComment(void)
+{ char *p = in_Line + inCol;
+  char *endPtr;
+  int index;
+  int length = 0;
+  if (strncmp(p,"* STR ",6) != 0) return;
+  p += 6;
+  index = (int)strtol(p,&endPtr,10);
+  if ((index < 0) || (index >= STRING_TABLE_SIZE)) return;
+  p = endPtr;
+  while (*p == ' ') p++;
+  if (*p != '"') return;
+  p++;
+  while ((*p != '\0') && (*p != '"') && (length < STRING_SIZE - 1))
+  { if (*p == '\\')
+    { p++;
+      if (*p == '\0') break;
+    }
+    stringTable[index][length++] = *p;
+    p++;
+  }
+  stringTable[index][length] = '\0';
+  stringTableSet[index] = TRUE;
+}
+
+/********************************************/
+void printMachineValue(double value)
+{ int ivalue = (int)value;
+  if (value == (double)ivalue)
+    printf("%d",ivalue);
+  else
+    printf("%.10g",value);
+}
+
+/********************************************/
 int readInstructions (void)
 { OPCODE op;
   int arg1, arg2, arg3;
@@ -227,11 +286,16 @@ int readInstructions (void)
   dMem[0] = DADDR_SIZE - 1 ;
   for (loc = 1 ; loc < DADDR_SIZE ; loc++)
       dMem[loc] = 0 ;
+  for (loc = 0 ; loc < STRING_TABLE_SIZE ; loc++)
+  { stringTable[loc][0] = '\0';
+    stringTableSet[loc] = FALSE;
+  }
   for (loc = 0 ; loc < IADDR_SIZE ; loc++)
   { iMem[loc].iop = opHALT ;
     iMem[loc].iarg1 = 0 ;
     iMem[loc].iarg2 = 0 ;
     iMem[loc].iarg3 = 0 ;
+    iMem[loc].farg2 = 0 ;
   }
   lineNo = 0 ;
   while (! feof(pgm))
@@ -241,8 +305,12 @@ int readInstructions (void)
     lineLen = strlen(in_Line)-1 ;
     if (in_Line[lineLen]=='\n') in_Line[lineLen] = '\0' ;
     else in_Line[++lineLen] = '\0';
-    if ( (nonBlank()) && (in_Line[inCol] != '*') )
-    { if (! getNum())
+    if (nonBlank())
+    { if (in_Line[inCol] == '*')
+      { readStringComment();
+        continue;
+      }
+      if (! getNum())
         return error("Bad location", lineNo,-1);
       loc = num;
       if (loc > IADDR_SIZE)
@@ -283,9 +351,17 @@ int readInstructions (void)
         arg1 = num;
         if ( ! skipCh(','))
             return error("Missing comma", lineNo,loc);
-        if (! getNum ())
-            return error("Bad displacement", lineNo,loc);
-        arg2 = num;
+        if (op == opLDC)
+        { if (! getFloatNum ())
+              return error("Bad displacement", lineNo,loc);
+          arg2 = (int)fnum;
+        }
+        else
+        { if (! getNum ())
+              return error("Bad displacement", lineNo,loc);
+          arg2 = num;
+          fnum = num;
+        }
         if ( ! skipCh('(') && ! skipCh(',') )
             return error("Missing LParen", lineNo,loc);
         if ( (! getNum ()) || (num < 0) || (num >= NO_REGS))
@@ -297,6 +373,7 @@ int readInstructions (void)
       iMem[loc].iarg1 = arg1;
       iMem[loc].iarg2 = arg2;
       iMem[loc].iarg3 = arg3;
+      iMem[loc].farg2 = (op == opLDC) ? fnum : arg2;
     }
   }
   return TRUE;
@@ -357,15 +434,26 @@ STEPRESULT stepTM (void)
         gets(in_Line);
         lineLen = strlen(in_Line) ;
         inCol = 0;
-        ok = getNum();
+        ok = getFloatNum();
         if ( ! ok ) printf ("Illegal value\n");
-        else reg[r] = num;
+        else reg[r] = fnum;
       }
       while (! ok);
       break;
 
     case opOUT :  
-      printf ("OUT instruction prints: %d\n", reg[r] ) ;
+      printf ("OUT instruction prints: ") ;
+      printMachineValue(reg[r]);
+      printf ("\n") ;
+      break;
+    case opOUTS :
+      { int stringIndex = (int)reg[r];
+        if ((stringIndex >= 0) && (stringIndex < STRING_TABLE_SIZE) &&
+            stringTableSet[stringIndex])
+          printf ("OUTS instruction prints: %s\n", stringTable[stringIndex] ) ;
+        else
+          printf ("OUTS instruction prints: <bad string index %d>\n", stringIndex ) ;
+      }
       break;
     case opADD :  reg[r] = reg[s] + reg[t] ;  break;
     case opSUB :  reg[r] = reg[s] - reg[t] ;  break;
@@ -383,7 +471,7 @@ STEPRESULT stepTM (void)
 
     /*************** RA instructions ********************/
     case opLDA :    reg[r] = m ; break;
-    case opLDC :    reg[r] = currentinstruction.iarg2 ;   break;
+    case opLDC :    reg[r] = currentinstruction.farg2 ;   break;
     case opJLT :    if ( reg[r] <  0 ) reg[PC_REG] = m ; break;
     case opJLE :    if ( reg[r] <=  0 ) reg[PC_REG] = m ; break;
     case opJGT :    if ( reg[r] >  0 ) reg[PC_REG] = m ; break;
@@ -467,7 +555,9 @@ int doCommand (void)
     case 'r' :
     /***********************************/
       for (i = 0; i < NO_REGS; i++)
-      { printf("%1d: %4d    ", i,reg[i]);
+      { printf("%1d: ", i);
+        printMachineValue(reg[i]);
+        printf("    ");
         if ( (i % 4) == 3 ) printf ("\n");
       }
       break;
@@ -503,7 +593,9 @@ int doCommand (void)
       else
       { while ((dloc >= 0) && (dloc < DADDR_SIZE)
                   && (printcnt > 0))
-        { printf("%5d: %5d\n",dloc,dMem[dloc]);
+        { printf("%5d: ",dloc);
+          printMachineValue(dMem[dloc]);
+          printf("\n");
           dloc++;
           printcnt--;
         }

@@ -17,9 +17,27 @@
    stored, and incremeted when loaded again
 */
 static int tmpOffset = 0;
+static int stringCount = 0;
 
 /* prototype for internal recursive code generator */
 static void cGen (TreeNode * tree);
+
+static void emitStringDefinition(int index, char * value)
+{ int i;
+  fprintf(code,"* STR %d \"",index);
+  for (i = 0; value[i] != '\0'; i++)
+  { if ((value[i] == '"') || (value[i] == '\\'))
+      fputc('\\',code);
+    fputc(value[i],code);
+  }
+  fprintf(code,"\"\n");
+}
+
+static int addStringLiteral(char * value)
+{ int index = stringCount++;
+  emitStringDefinition(index,value);
+  return index;
+}
 
 /* Procedure genStmt generates code at a statement node */
 static void genStmt( TreeNode * tree)
@@ -84,20 +102,30 @@ static void genStmt( TreeNode * tree)
          emitRM("ST",ac,loc,gp,"read: store value");
          break;
       case WriteK:
-         /* generate code for expression to write */
-         cGen(tree->child[0]);
-         /* now output it */
-         emitRO("OUT",ac,0,0,"write ac");
+         p1 = tree->child[0];
+         if ((p1 != NULL) && (p1->nodekind == ExpK) &&
+             (p1->kind.exp == StringK))
+         { int stringIndex = addStringLiteral(p1->attr.name);
+           emitRM("LDC",ac,stringIndex,0,"load string index");
+           emitRO("OUTS",ac,0,0,"write string");
+         }
+         else
+         { /* generate code for expression to write */
+           cGen(p1);
+           /* now output it */
+           emitRO("OUT",ac,0,0,"write ac");
+         }
          break;
       case IntK:
+      case FloatK:
          { int i;
-           if (TraceCode) emitComment("-> int decl");
+           if (TraceCode) emitComment("-> decl");
            for (i = 0; i < MAXCHILDREN; i++)
              if (tree->child[i] != NULL &&
                  tree->child[i]->nodekind == StmtK &&
                  tree->child[i]->kind.stmt == AssignK)
                cGen(tree->child[i]);
-           if (TraceCode) emitComment("<- int decl");
+           if (TraceCode) emitComment("<- decl");
          }
          break;
       default:
@@ -113,10 +141,16 @@ static void genExp( TreeNode * tree)
 
     case ConstK :
       if (TraceCode) emitComment("-> Const") ;
-      /* gen code to load integer constant using LDC */
-      emitRM("LDC",ac,tree->attr.val,0,"load const");
+      /* gen code to load numeric constant using LDC */
+      if (tree->type == Float)
+        emitRMFloat("LDC",ac,tree->attr.fval,0,"load float const");
+      else
+        emitRM("LDC",ac,tree->attr.val,0,"load const");
       if (TraceCode)  emitComment("<- Const") ;
       break; /* ConstK */
+    
+    case StringK :
+      break; /* StringK is handled directly by WriteK */
     
     case IdK :
       if (TraceCode) emitComment("-> Id") ;
@@ -160,6 +194,20 @@ static void genExp( TreeNode * tree)
             case GT :
                emitRO("SUB",ac,ac1,ac,"op >") ;
                emitRM("JGT",ac,2,pc,"br if true") ;
+               emitRM("LDC",ac,0,ac,"false case") ;
+               emitRM("LDA",pc,1,pc,"unconditional jmp") ;
+               emitRM("LDC",ac,1,ac,"true case") ;
+               break;
+            case LEQ :
+               emitRO("SUB",ac,ac1,ac,"op <=") ;
+               emitRM("JLE",ac,2,pc,"br if true") ;
+               emitRM("LDC",ac,0,ac,"false case") ;
+               emitRM("LDA",pc,1,pc,"unconditional jmp") ;
+               emitRM("LDC",ac,1,ac,"true case") ;
+               break;
+            case GEQ :
+               emitRO("SUB",ac,ac1,ac,"op >=") ;
+               emitRM("JGE",ac,2,pc,"br if true") ;
                emitRM("LDC",ac,0,ac,"false case") ;
                emitRM("LDA",pc,1,pc,"unconditional jmp") ;
                emitRM("LDC",ac,1,ac,"true case") ;

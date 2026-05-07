@@ -1,0 +1,7 @@
+testcase2.tny:
+3 4 5 -> scalene
+4 4 5 -> isosceles
+6 6 6 -> equilateral
+
+float_calc.tny:
+no input -> 10, 5, 18.75, 3

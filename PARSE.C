@@ -21,6 +21,7 @@ static TreeNode * assign_stmt(void);
 static TreeNode * read_stmt(void);
 static TreeNode * write_stmt(void);
 static TreeNode * int_decl(void);
+static TreeNode * float_decl(void);
 static TreeNode * exp(void);
 static TreeNode * simple_exp(void);
 static TreeNode * term(void);
@@ -69,6 +70,7 @@ TreeNode * statement(void)
     case READ : t = read_stmt(); break;
     case WRITE : t = write_stmt(); break;
     case INT : t = int_decl(); break;
+    case FLOAT : t = float_decl(); break;
     default : syntaxError("unexpected token -> ");
               printToken(token,tokenString);
               token = getToken();
@@ -156,6 +158,32 @@ TreeNode * int_decl(void)
   return t;
 }
 
+/* float_decl parses: float ID [:= exp] {, ID [:= exp]} */
+TreeNode * float_decl(void)
+{ TreeNode * t = newStmtNode(FloatK);
+  int i = 0;
+  match(FLOAT);
+  while (token == ID && i < MAXCHILDREN)
+  { char * name = copyString(tokenString);
+    match(ID);
+    if (token == ASSIGN)
+    { TreeNode * a = newStmtNode(AssignK);
+      if (a != NULL) a->attr.name = name;
+      match(ASSIGN);
+      if (a != NULL) a->child[0] = exp();
+      if (t != NULL) t->child[i++] = a;
+    }
+    else
+    { TreeNode * id = newExpNode(IdK);
+      if (id != NULL) id->attr.name = name;
+      if (t != NULL) t->child[i++] = id;
+    }
+    if (token == COMMA) match(COMMA);
+    else break;
+  }
+  return t;
+}
+
 TreeNode * exp(void)
 { TreeNode * t = simple_exp();
   if ((token==LT)||(token==LEQ)||(token==GT)||(token==GEQ)||(token==EQ)) {
@@ -208,8 +236,24 @@ TreeNode * factor(void)
     case NUM :
       t = newExpNode(ConstK);
       if ((t!=NULL) && (token==NUM))
-        t->attr.val = atoi(tokenString);
+      { if (strchr(tokenString,'.') != NULL)
+        { t->attr.fval = atof(tokenString);
+          t->type = Float;
+        }
+        else
+        { t->attr.val = atoi(tokenString);
+          t->type = Integer;
+        }
+      }
       match(NUM);
+      break;
+    case STRING :
+      t = newExpNode(StringK);
+      if ((t!=NULL) && (token==STRING))
+      { t->attr.name = copyString(tokenString);
+        t->type = String;
+      }
+      match(STRING);
       break;
     case ID :
       t = newExpNode(IdK);
@@ -227,7 +271,16 @@ TreeNode * factor(void)
       match(MINUS);
       if (token == NUM)
       { t = newExpNode(ConstK);
-        if (t != NULL) t->attr.val = -atoi(tokenString);
+        if (t != NULL)
+        { if (strchr(tokenString,'.') != NULL)
+          { t->attr.fval = -atof(tokenString);
+            t->type = Float;
+          }
+          else
+          { t->attr.val = -atoi(tokenString);
+            t->type = Integer;
+          }
+        }
         match(NUM);
       }
       else
@@ -235,6 +288,10 @@ TreeNode * factor(void)
         if (t != NULL)
         { t->attr.op = MINUS;
           t->child[0] = newExpNode(ConstK); /* implicit 0 */
+          if (t->child[0] != NULL)
+          { t->child[0]->attr.val = 0;
+            t->child[0]->type = Integer;
+          }
           t->child[1] = factor();
         }
       }

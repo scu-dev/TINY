@@ -60,8 +60,27 @@ static void insertNode( TreeNode * t)
             st_insert(t->attr.name,t->lineno,0);
           break;
         case IntK:
-          /* children (AssignK/IdK) are visited by traverse;
-             their own cases handle symbol insertion */
+        case FloatK:
+          { int i;
+            ExpType declaredType = (t->kind.stmt == FloatK) ? Float : Integer;
+            for (i = 0; i < MAXCHILDREN; i++)
+            { TreeNode * child = t->child[i];
+              char * name = NULL;
+              if (child == NULL) continue;
+              if (child->nodekind == StmtK &&
+                  child->kind.stmt == AssignK)
+                name = child->attr.name;
+              else if (child->nodekind == ExpK &&
+                       child->kind.exp == IdK)
+                name = child->attr.name;
+              if (name != NULL)
+              { if (st_lookup(name) == -1)
+                  st_insert_typed(name,t->lineno,location++,declaredType);
+                else
+                  st_insert_typed(name,t->lineno,0,declaredType);
+              }
+            }
+          }
           break;
         default:
           break;
@@ -103,6 +122,10 @@ static void typeError(TreeNode * t, char * message)
   Error = TRUE;
 }
 
+static int isNumeric(ExpType type)
+{ return (type == Integer) || (type == Float);
+}
+
 /* Procedure checkNode performs
  * type checking at a single tree node
  */
@@ -111,19 +134,28 @@ static void checkNode(TreeNode * t)
   { case ExpK:
       switch (t->kind.exp)
       { case OpK:
-          if ((t->child[0]->type != Integer) ||
-              (t->child[1]->type != Integer))
-            typeError(t,"Op applied to non-integer");
+          if (!isNumeric(t->child[0]->type) ||
+              !isNumeric(t->child[1]->type))
+            typeError(t,"Op applied to non-numeric value");
           if ((t->attr.op == EQ) || (t->attr.op == LT) ||
               (t->attr.op == LEQ) || (t->attr.op == GT) ||
               (t->attr.op == GEQ))
             t->type = Boolean;
+          else if ((t->child[0]->type == Float) ||
+                   (t->child[1]->type == Float))
+            t->type = Float;
           else
             t->type = Integer;
           break;
         case ConstK:
+          if (t->type != Float)
+            t->type = Integer;
+          break;
+        case StringK:
+          t->type = String;
+          break;
         case IdK:
-          t->type = Integer;
+          t->type = st_lookup_type(t->attr.name);
           break;
         default:
           break;
@@ -132,19 +164,23 @@ static void checkNode(TreeNode * t)
     case StmtK:
       switch (t->kind.stmt)
       { case IfK:
-          if (t->child[0]->type == Integer)
+          if (t->child[0]->type != Boolean)
             typeError(t->child[0],"if test is not Boolean");
           break;
         case AssignK:
-          if (t->child[0]->type != Integer)
-            typeError(t->child[0],"assignment of non-integer value");
+          { ExpType leftType = st_lookup_type(t->attr.name);
+            if ((leftType == Integer && t->child[0]->type != Integer) ||
+                (leftType == Float && !isNumeric(t->child[0]->type)))
+              typeError(t->child[0],"assignment of incompatible value");
+          }
           break;
         case WriteK:
-          if (t->child[0]->type != Integer)
-            typeError(t->child[0],"write of non-integer value");
+          if ((t->child[0]->type == Boolean) ||
+              (t->child[0]->type == Void))
+            typeError(t->child[0],"write of unsupported value");
           break;
         case RepeatK:
-          if (t->child[1]->type == Integer)
+          if (t->child[1]->type != Boolean)
             typeError(t->child[1],"repeat test is not Boolean");
           break;
         default:

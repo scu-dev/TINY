@@ -11,7 +11,7 @@
 
 /* states in scanner DFA */
 typedef enum
-   { START,INASSIGN,INCOMMENT,INNUM,INID,INLT,INGT,INPP,DONE }
+   { START,INASSIGN,INCOMMENT,INNUM,INFLOAT,INID,INLT,INGT,INPP,INSTRING,DONE }
    StateType;
 
 /* lexeme of identifier or reserved word */
@@ -58,7 +58,7 @@ static struct
     } reservedWords[MAXRESERVED]
    = {{"if",IF},{"then",THEN},{"else",ELSE},{"end",END},
       {"repeat",REPEAT},{"until",UNTIL},{"read",READ},
-      {"write",WRITE},{"int",INT}};
+      {"write",WRITE},{"int",INT},{"float",FLOAT}};
 
 /* lookup an identifier to see if it is a reserved word */
 /* uses linear search */
@@ -101,6 +101,10 @@ TokenType getToken(void)
          else if (c == '{')
          { save = FALSE;
            state = INCOMMENT;
+         }
+         else if (c == '"')
+         { save = FALSE;
+           state = INSTRING;
          }
          else
          { state = DONE;
@@ -168,6 +172,17 @@ TokenType getToken(void)
          }
          break;
        case INNUM:
+         if (c == '.')
+           state = INFLOAT;
+         else if (!isdigit(c))
+         { /* backup in the input */
+           ungetNextChar();
+           save = FALSE;
+           state = DONE;
+           currentToken = NUM;
+         }
+         break;
+       case INFLOAT:
          if (!isdigit(c))
          { /* backup in the input */
            ungetNextChar();
@@ -215,6 +230,18 @@ TokenType getToken(void)
            currentToken = PLUS;
          }
          break;
+       case INSTRING:
+         if (c == '"')
+         { save = FALSE;
+           state = DONE;
+           currentToken = STRING;
+         }
+         else if ((c == EOF) || (c == '\n'))
+         { save = FALSE;
+           state = DONE;
+           currentToken = ERROR;
+         }
+         break;
        case DONE:
        default: /* should never happen */
          fprintf(listing,"Scanner Bug: state= %d\n",state);
@@ -236,4 +263,3 @@ TokenType getToken(void)
    }
    return currentToken;
 } /* end getToken */
-

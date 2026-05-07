@@ -4,14 +4,15 @@
 输入：输出流、语法树“根节点”、递归深度（仅用作打印记号）
 输出：指定路径的Graphviz(DOT语言)文件
 */
-char *optab[28] = { "EOF","ERR",
+char *optab[30] = { "EOF","ERR",
                     "IF","THEN","ELSE","END","REPEAT","UNTIL","READ","WRITE",
-                    "ID","NUM",
+                    "ID","NUM","STRING",
                     ":=","=","<","<=",">",">=","+","-","*","/","(",")",";", "," ,"++",
-                    "INT"
+                    "INT","FLOAT"
                   };
 
 #define N 100
+#define NODEPTR(t) ((void *)(t))
 TreeNode * drawn_opnode[N] = {NULL};
 int op_index = 0;
 int isdrawn(TreeNode* t){/* check if op node already drawn */
@@ -37,41 +38,51 @@ void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth)
         switch (syntaxtree->kind.stmt)
         {
         case IfK:
-            fprintf(pf, "\"%d\"[label = \"[IfK]\"];\n", syntaxtree);
+            fprintf(pf, "\"%p\"[label = \"[IfK]\"];\n", NODEPTR(syntaxtree));
             CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);//exp
             CreateGraphvizFormat(pf, syntaxtree->child[1], depth+1);//stmt_seq
-            fprintf(pf, "\"%d\"->{\"%d\"\"%d\"", syntaxtree, syntaxtree->child[0], syntaxtree->child[1]);
-            if (syntaxtree->child[2]) {
-                CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);//stmt_seq
-                fprintf(pf, "\"%d\"", syntaxtree->child[2]);
-            }
-            fprintf(pf, "};\n");
+            if (syntaxtree->child[2])
+                CreateGraphvizFormat(pf, syntaxtree->child[2], depth+1);//stmt_seq
+            fprintf(pf, "\"%p\"->\"%p\"[label = \"cond\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
+            fprintf(pf, "\"%p\"->\"%p\"[label = \"then\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[1]));
+            if (syntaxtree->child[2])
+                fprintf(pf, "\"%p\"->\"%p\"[label = \"else\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[2]));
             break;
         case RepeatK:
-            fprintf(pf, "\"%d\"[label = \"[RepeatK]\"];\n", syntaxtree);
+            fprintf(pf, "\"%p\"[label = \"[RepeatK]\"];\n", NODEPTR(syntaxtree));
             CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);//stmt_seq
             CreateGraphvizFormat(pf, syntaxtree->child[1], depth+1);//exp
-            fprintf(pf, "\"%d\"->{\"%d\"\"%d\"};\n", syntaxtree, syntaxtree->child[0], syntaxtree->child[1]);
+            fprintf(pf, "\"%p\"->\"%p\"[label = \"body\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
+            fprintf(pf, "\"%p\"->\"%p\"[label = \"until\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[1]));
             break;
         case AssignK:
-            fprintf(pf, "\"%d\"[label = \"[AssignK:%s]\"];\n", syntaxtree, syntaxtree->attr.name);
+            fprintf(pf, "\"%p\"[label = \"[AssignK:%s]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.name);
             CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);//exp
-            fprintf(pf, "\"%d\"->{\"%d\"};\n", syntaxtree, syntaxtree->child[0]);
+            fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
             break;
         case ReadK:
-            fprintf(pf, "\"%d\"[label = \"[ReadK:%s]\"];\n", syntaxtree, syntaxtree->attr.name);
+            fprintf(pf, "\"%p\"[label = \"[ReadK:%s]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.name);
             break;
         case WriteK:
-            fprintf(pf, "\"%d\"[label = \"[WriteK]\"];\n", syntaxtree);
+            fprintf(pf, "\"%p\"[label = \"[WriteK]\"];\n", NODEPTR(syntaxtree));
             CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);//exp
-            fprintf(pf, "\"%d\"->{\"%d\"};\n", syntaxtree, syntaxtree->child[0]);
+            fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
             break;
         case IntK:
-            fprintf(pf, "\"%d\"[label = \"[IntK]\"];\n", syntaxtree);
+            fprintf(pf, "\"%p\"[label = \"[IntK]\"];\n", NODEPTR(syntaxtree));
             for (int i = 0; i < MAXCHILDREN; i++){
                 if (syntaxtree->child[i]){
                     CreateGraphvizFormat(pf, syntaxtree->child[i], depth+1);//identifier or expression
-                    fprintf(pf, "\"%d\"->{\"%d\"};\n", syntaxtree, syntaxtree->child[i]);
+                    fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[i]));
+                }else break;
+            }
+            break;
+        case FloatK:
+            fprintf(pf, "\"%p\"[label = \"[FloatK]\"];\n", NODEPTR(syntaxtree));
+            for (int i = 0; i < MAXCHILDREN; i++){
+                if (syntaxtree->child[i]){
+                    CreateGraphvizFormat(pf, syntaxtree->child[i], depth+1);//identifier or expression
+                    fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[i]));
                 }else break;
             }
             break;
@@ -80,7 +91,7 @@ void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth)
         }
         if (syntaxtree->sibling) {
             CreateGraphvizFormat(pf, syntaxtree->sibling, depth+1);//stmt
-            fprintf(pf, "\"%d\"->{\"%d\"};\n", syntaxtree, syntaxtree->sibling);
+            fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->sibling));
         }
     }
     //
@@ -89,16 +100,16 @@ void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth)
         {
         case OpK:
             if (!isdrawn(syntaxtree)){// 当前op节点尚未绘制
-                fprintf(pf, "\"%d\"[label = \"[OpK:%s]\"];\n", syntaxtree, optab[syntaxtree->attr.op]);
+                fprintf(pf, "\"%p\"[label = \"[OpK:%s]\"];\n", NODEPTR(syntaxtree), optab[syntaxtree->attr.op]);
                 if (syntaxtree->attr.op == PP){// 自增运算只有一个孩子节点
                     CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);
-                    fprintf(pf, "\"%d\"->\"%d\";\n", syntaxtree, syntaxtree->child[0]);
+                    fprintf(pf, "\"%p\"->\"%p\";\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
                 }else{
                     CreateGraphvizFormat(pf, syntaxtree->child[0], depth+1);
                     CreateGraphvizFormat(pf, syntaxtree->child[1], depth+1);
                     // fprintf(pf, "\"%d\"->{\"%d\"\"%d\"};\n", syntaxtree, syntaxtree->child[0], syntaxtree->child[1]);
-                    fprintf(pf, "\"%d\"->\"%d\"[label = \"L\"];\n", syntaxtree, syntaxtree->child[0]);
-                    fprintf(pf, "\"%d\"->\"%d\"[label = \"R\"];\n", syntaxtree, syntaxtree->child[1]);
+                    fprintf(pf, "\"%p\"->\"%p\"[label = \"L\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[0]));
+                    fprintf(pf, "\"%p\"->\"%p\"[label = \"R\"];\n", NODEPTR(syntaxtree), NODEPTR(syntaxtree->child[1]));
                 }
                 
 
@@ -106,14 +117,17 @@ void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth)
             }
             break;
         case ConstK:
-            if ((int)syntaxtree->attr.val == syntaxtree->attr.val){
-                fprintf(pf, "\"%d\"[label = \"[ConstK:%d]\"];\n", syntaxtree, (int)syntaxtree->attr.val);
+            if (syntaxtree->type == Float){
+                fprintf(pf, "\"%p\"[label = \"[ConstK:%g]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.fval);
             }else{
-                fprintf(pf, "\"%d\"[label = \"[ConstK:%f]\"];\n", syntaxtree, syntaxtree->attr.val);
+                fprintf(pf, "\"%p\"[label = \"[ConstK:%d]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.val);
             }
             break;
+        case StringK:
+            fprintf(pf, "\"%p\"[label = \"[StringK:%s]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.name);
+            break;
         case IdK:
-            fprintf(pf, "\"%d\"[label = \"[IdK:%s]\"];\n", syntaxtree, syntaxtree->attr.name);
+            fprintf(pf, "\"%p\"[label = \"[IdK:%s]\"];\n", NODEPTR(syntaxtree), syntaxtree->attr.name);
             break;
         default:
             break;

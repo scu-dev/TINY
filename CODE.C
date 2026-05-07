@@ -53,6 +53,13 @@ void emitRM( char * op, int r, int d, int s, char *c)
   if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
 } /* emitRM */
 
+void emitRMFloat( char * op, int r, double d, int s, char *c)
+{ fprintf(code,"%3d:  %5s  %d,%.15g(%d) ",emitLoc++,op,r,d,s);
+  if (TraceCode) fprintf(code,"\t%s",c) ;
+  fprintf(code,"\n") ;
+  if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
+} /* emitRMFloat */
+
 /* Function emitSkip skips "howMany" code
  * locations for later backpatch. It also
  * returns the current code position

@@ -56,6 +56,11 @@ void emitRO( char *op, int r, int s, int t, char *c);
  */
 void emitRM( char * op, int r, int d, int s, char *c);
 
+/* Procedure emitRMFloat emits a register-to-memory
+ * TM instruction whose displacement is a floating constant.
+ */
+void emitRMFloat( char * op, int r, double d, int s, char *c);
+
 /* Function emitSkip skips "howMany" code
  * locations for later backpatch. It also
  * returns the current code position
