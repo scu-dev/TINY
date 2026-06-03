@@ -5,6 +5,8 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include <stdlib.h>
+#include <string.h>
 #include "GLOBALS.H"
 
 /* set NO_PARSE to TRUE to get a scanner-only compiler */
@@ -33,9 +35,9 @@
 
 /* allocate global variables */
 int lineno = 0;
-FILE * source;
-FILE * listing;
-FILE * code;
+FILE* source;
+FILE* listing;
+FILE* code;
 
 /* allocate and set tracing flags */
 int EchoSource = FALSE;
@@ -46,15 +48,59 @@ int TraceCode = FALSE;
 
 int Error = FALSE;
 
-int main( int argc, char * argv[] )
-{ TreeNode * syntaxTree;
+static char* fileNamePart(char* path)
+{ char* slash = strrchr(path,'/');
+  char* backslash = strrchr(path,'\\');
+  char* name = path;
+  if ((slash != NULL) && (slash + 1 > name))
+    name = slash + 1;
+  if ((backslash != NULL) && (backslash + 1 > name))
+    name = backslash + 1;
+  return name;
+}
+
+static int hasFileExtension(char* path)
+{ char* name = fileNamePart(path);
+  return (strchr(name,'.') != NULL);
+}
+
+static char* outputFileName(char* inputFile, const char* extension)
+{ char* name = fileNamePart(inputFile);
+  char* dot = strrchr(name,'.');
+  int fnlen;
+  char* outputFile;
+  if (dot != NULL)
+    fnlen = (int)(dot - inputFile);
+  else
+    fnlen = (int)strlen(inputFile);
+  outputFile = (char*)calloc(fnlen + (int)strlen(extension) + 1,sizeof(char));
+  strncpy(outputFile,inputFile,fnlen);
+  strcat(outputFile,extension);
+  return outputFile;
+}
+
+int main( int argc, char* argv[] )
+{ TreeNode* syntaxTree;
   char pgm[120]; /* source code file name */
-  if (argc != 2)
-    { fprintf(stderr,"usage: %s <filename>\n",argv[0]);
+  char* sourceArg = NULL;
+  int generateDot = FALSE;
+  int argIndex;
+  for (argIndex = 1; argIndex < argc; argIndex++)
+  { if (strcmp(argv[argIndex],"--dot") == 0)
+      generateDot = TRUE;
+    else if (sourceArg == NULL)
+      sourceArg = argv[argIndex];
+    else
+    { fprintf(stderr,"usage: %s [--dot] <filename>\n",argv[0]);
       exit(1);
     }
-  strcpy(pgm,argv[1]) ;
-  if (strchr (pgm, '.') == NULL)
+  }
+  if (sourceArg == NULL)
+  { fprintf(stderr,"usage: %s [--dot] <filename>\n",argv[0]);
+    exit(1);
+  }
+  strcpy(pgm,sourceArg) ;
+  if (!hasFileExtension(pgm))
      strcat(pgm,".tny");
   source = fopen(pgm,"r");
   if (source==NULL)
@@ -71,11 +117,8 @@ int main( int argc, char * argv[] )
     fprintf(listing,"\nSyntax tree:\n");
     printTree(syntaxTree);
   }
-  /* always generate a Graphviz DOT file for AST visualization */
-  { int fnlen = strcspn(pgm,".");
-    char * dotfile = (char *)calloc(fnlen+5, sizeof(char));
-    strncpy(dotfile,pgm,fnlen);
-    strcat(dotfile,".dot");
+  if (generateDot)
+  { char* dotfile = outputFileName(pgm,".dot");
     outputGraphvizFormat(dotfile,syntaxTree);
     fprintf(listing,"AST written to: %s\n",dotfile);
     free(dotfile);
@@ -90,11 +133,8 @@ int main( int argc, char * argv[] )
   }
 #if !NO_CODE
   if (! Error)
-  { char * codefile;
-    int fnlen = strcspn(pgm,".");
-    codefile = (char *) calloc(fnlen+4, sizeof(char));
-    strncpy(codefile,pgm,fnlen);
-    strcat(codefile,".tm");
+  { char* codefile;
+    codefile = outputFileName(pgm,".tm");
     code = fopen(codefile,"w");
     if (code == NULL)
     { printf("Unable to open %s\n",codefile);
@@ -109,4 +149,3 @@ int main( int argc, char * argv[] )
   fclose(source);
   return 0;
 }
-

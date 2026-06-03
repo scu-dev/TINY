@@ -34,7 +34,7 @@
 /* Procedure emitComment prints a comment line 
  * with comment c in the code file
  */
-void emitComment( char * c );
+void emitComment( const char* c );
 
 /* Procedure emitRO emits a register-only
  * TM instruction
@@ -44,7 +44,7 @@ void emitComment( char * c );
  * t = 2nd source register
  * c = a comment to be printed if TraceCode is TRUE
  */
-void emitRO( char *op, int r, int s, int t, char *c);
+void emitRO(const char* op, int r, int s, int t, const char* c);
 
 /* Procedure emitRM emits a register-to-memory
  * TM instruction
@@ -54,12 +54,12 @@ void emitRO( char *op, int r, int s, int t, char *c);
  * s = the base register
  * c = a comment to be printed if TraceCode is TRUE
  */
-void emitRM( char * op, int r, int d, int s, char *c);
+void emitRM(const char* op, int r, int d, int s, const char* c);
 
 /* Procedure emitRMFloat emits a register-to-memory
  * TM instruction whose displacement is a floating constant.
  */
-void emitRMFloat( char * op, int r, double d, int s, char *c);
+void emitRMFloat(const char* op, int r, double d, int s, const char* c);
 
 /* Function emitSkip skips "howMany" code
  * locations for later backpatch. It also
@@ -86,6 +86,6 @@ void emitRestore(void);
  * a = the absolute location in memory
  * c = a comment to be printed if TraceCode is TRUE
  */
-void emitRM_Abs( char *op, int r, int a, char * c);
+void emitRM_Abs(const char* op, int r, int a, const char* c);
 
 #endif

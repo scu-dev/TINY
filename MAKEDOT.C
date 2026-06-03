@@ -1,19 +1,20 @@
+#include <stdlib.h>
 #include "MAKEDOT.H"
 /*
 用于递归输出Graphviz(DOT语言)文件
 输入：输出流、语法树“根节点”、递归深度（仅用作打印记号）
 输出：指定路径的Graphviz(DOT语言)文件
 */
-char *optab[30] = { "EOF","ERR",
+const char* optab[32] = { "EOF","ERR",
                     "IF","THEN","ELSE","END","REPEAT","UNTIL","READ","WRITE",
                     "ID","NUM","STRING",
-                    ":=","=","<","<=",">",">=","+","-","*","/","(",")",";", "," ,"++",
+                    ":=","=","<","<=",">",">=","+","-","*","/","(",")",";", "," ,"++","&&","||",
                     "INT","FLOAT"
                   };
 
 #define N 100
-#define NODEPTR(t) ((void *)(t))
-TreeNode * drawn_opnode[N] = {NULL};
+#define NODEPTR(t) ((void*)(t))
+TreeNode* drawn_opnode[N] = {NULL};
 int op_index = 0;
 int isdrawn(TreeNode* t){/* check if op node already drawn */
     int res = FALSE;
@@ -145,7 +146,7 @@ void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth)
 */
 void outputGraphvizFormat(const char* outputFilePath, TreeNode* syntaxtree)
 {
-    FILE *pf = fopen(outputFilePath, "w");
+    FILE* pf = fopen(outputFilePath, "w");
     if (pf == NULL) {
       printf("Unable to open %s\n",outputFilePath);
       exit(1);

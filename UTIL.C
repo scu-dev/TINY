@@ -6,6 +6,8 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include <stdlib.h>
+#include <string.h>
 #include "GLOBALS.H"
 #include "UTIL.H"
 
@@ -38,6 +40,8 @@ void printToken( TokenType token, const char* tokenString )
     case SEMI: fprintf(listing,";\n"); break;
     case COMMA: fprintf(listing,",\n"); break;
     case PP: fprintf(listing,"++\n"); break;
+    case AND: fprintf(listing,"&&\n"); break;
+    case OR: fprintf(listing,"||\n"); break;
     case PLUS: fprintf(listing,"+\n"); break;
     case MINUS: fprintf(listing,"-\n"); break;
     case TIMES: fprintf(listing,"*\n"); break;
@@ -67,8 +71,8 @@ void printToken( TokenType token, const char* tokenString )
 /* Function newStmtNode creates a new statement
  * node for syntax tree construction
  */
-TreeNode * newStmtNode(StmtKind kind)
-{ TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
+TreeNode* newStmtNode(StmtKind kind)
+{ TreeNode* t = (TreeNode*) malloc(sizeof(TreeNode));
   int i;
   if (t==NULL)
     fprintf(listing,"Out of memory error at line %d\n",lineno);
@@ -85,8 +89,8 @@ TreeNode * newStmtNode(StmtKind kind)
 /* Function newExpNode creates a new expression 
  * node for syntax tree construction
  */
-TreeNode * newExpNode(ExpKind kind)
-{ TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
+TreeNode* newExpNode(ExpKind kind)
+{ TreeNode* t = (TreeNode*) malloc(sizeof(TreeNode));
   int i;
   if (t==NULL)
     fprintf(listing,"Out of memory error at line %d\n",lineno);
@@ -104,12 +108,12 @@ TreeNode * newExpNode(ExpKind kind)
 /* Function copyString allocates and makes a new
  * copy of an existing string
  */
-char * copyString(char * s)
+char* copyString(char* s)
 { int n;
-  char * t;
+  char* t;
   if (s==NULL) return NULL;
   n = strlen(s)+1;
-  t = (char *)malloc(n); // 20240329
+  t = (char*)malloc(n); // 20240329
   if (t==NULL)
     fprintf(listing,"Out of memory error at line %d\n",lineno);
   else strcpy(t,s);
@@ -135,7 +139,7 @@ static void printSpaces(void)
 /* procedure printTree prints a syntax tree to the 
  * listing file using indentation to indicate subtrees
  */
-void printTree( TreeNode * tree )
+void printTree( TreeNode* tree )
 { int i;
   INDENT;
   while (tree != NULL) {

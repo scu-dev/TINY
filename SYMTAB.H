@@ -16,26 +16,26 @@
  * loc = memory location is inserted only the
  * first time, otherwise ignored
  */
-void st_insert( char * name, int lineno, int loc );
+void st_insert( char* name, int lineno, int loc );
 
 /* Procedure st_insert_typed inserts a declared identifier
  * with its source type on first definition.
  */
-void st_insert_typed( char * name, int lineno, int loc, ExpType type );
+void st_insert_typed( char* name, int lineno, int loc, ExpType type );
 
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
-int st_lookup ( char * name );
+int st_lookup ( char* name );
 
 /* Function st_lookup_type returns the declared type of a variable.
  */
-ExpType st_lookup_type ( char * name );
+ExpType st_lookup_type ( char* name );
 
 /* Procedure printSymTab prints a formatted 
  * listing of the symbol table contents 
  * to the listing file
  */
-void printSymTab(FILE * listing);
+void printSymTab(FILE* listing);
 
 #endif

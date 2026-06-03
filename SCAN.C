@@ -5,13 +5,15 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include <ctype.h>
+#include <string.h>
 #include "GLOBALS.H"
 #include "UTIL.H"
 #include "SCAN.H"
 
 /* states in scanner DFA */
 typedef enum
-   { START,INASSIGN,INCOMMENT,INNUM,INFLOAT,INID,INLT,INGT,INPP,INSTRING,DONE }
+   { START,INASSIGN,INCOMMENT,INNUM,INFLOAT,INID,INLT,INGT,INPP,INAND,INOR,INSTRING,DONE }
    StateType;
 
 /* lexeme of identifier or reserved word */
@@ -53,7 +55,7 @@ static void ungetNextChar(void)
 
 /* lookup table of reserved words */
 static struct
-    { char* str;
+    { const char* str;
       TokenType tok;
     } reservedWords[MAXRESERVED]
    = {{"if",IF},{"then",THEN},{"else",ELSE},{"end",END},
@@ -62,7 +64,7 @@ static struct
 
 /* lookup an identifier to see if it is a reserved word */
 /* uses linear search */
-static TokenType reservedLookup (char * s)
+static TokenType reservedLookup (const char* s)
 { int i;
   for (i=0;i<MAXRESERVED;i++)
     if (!strcmp(s,reservedWords[i].str))
@@ -124,6 +126,12 @@ TokenType getToken(void)
                break;
              case '+':
                state = INPP;
+               break;
+             case '&':
+               state = INAND;
+               break;
+             case '|':
+               state = INOR;
                break;
              case '-':
                currentToken = MINUS;
@@ -228,6 +236,26 @@ TokenType getToken(void)
          { ungetNextChar();
            save = FALSE;
            currentToken = PLUS;
+         }
+         break;
+       case INAND:
+         state = DONE;
+         if (c == '&')
+           currentToken = AND;
+         else
+         { ungetNextChar();
+           save = FALSE;
+           currentToken = ERROR;
+         }
+         break;
+       case INOR:
+         state = DONE;
+         if (c == '|')
+           currentToken = OR;
+         else
+         { ungetNextChar();
+           save = FALSE;
+           currentToken = ERROR;
          }
          break;
        case INSTRING:

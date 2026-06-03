@@ -10,9 +10,6 @@
 #define _GLOBALS_H_
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
 
 #ifndef FALSE
 #define FALSE 0
@@ -34,7 +31,7 @@ typedef enum
     ID,NUM,STRING,
     /* special symbols — order must match optab[] in MAKEDOT.C */
     ASSIGN,EQ,LT,LEQ,GT,GEQ,PLUS,MINUS,TIMES,OVER,LPAREN,RPAREN,SEMI,
-    COMMA,PP,INT,FLOAT
+    COMMA,PP,AND,OR,INT,FLOAT
    } TokenType;
 
 extern FILE* source; /* source code text file */
@@ -57,15 +54,15 @@ typedef enum {Void,Integer,Float,Boolean,String} ExpType;
 #define MAXCHILDREN 3
 
 typedef struct treeNode
-   { struct treeNode * child[MAXCHILDREN];
-     struct treeNode * sibling;
+   { struct treeNode* child[MAXCHILDREN];
+     struct treeNode* sibling;
      int lineno;
      NodeKind nodekind;
      union { StmtKind stmt; ExpKind exp;} kind;
      union { TokenType op;
              int val;
              double fval;
-             char * name; } attr;
+             char* name; } attr;
      ExpType type; /* for type checking of exps */
    } TreeNode;
 

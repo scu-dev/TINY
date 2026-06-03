@@ -5,6 +5,8 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include <stdlib.h>
+#include <string.h>
 #include "GLOBALS.H"
 #include "UTIL.H"
 #include "SCAN.H"
@@ -13,21 +15,24 @@
 static TokenType token; /* holds current token */
 
 /* function prototypes for recursive calls */
-static TreeNode * stmt_sequence(void);
-static TreeNode * statement(void);
-static TreeNode * if_stmt(void);
-static TreeNode * repeat_stmt(void);
-static TreeNode * assign_stmt(void);
-static TreeNode * read_stmt(void);
-static TreeNode * write_stmt(void);
-static TreeNode * int_decl(void);
-static TreeNode * float_decl(void);
-static TreeNode * exp(void);
-static TreeNode * simple_exp(void);
-static TreeNode * term(void);
-static TreeNode * factor(void);
+static TreeNode* stmt_sequence(void);
+static TreeNode* statement(void);
+static TreeNode* if_stmt(void);
+static TreeNode* repeat_stmt(void);
+static TreeNode* assign_stmt(void);
+static TreeNode* read_stmt(void);
+static TreeNode* write_stmt(void);
+static TreeNode* int_decl(void);
+static TreeNode* float_decl(void);
+static TreeNode* exp(void);
+static TreeNode* logical_or_exp(void);
+static TreeNode* logical_and_exp(void);
+static TreeNode* comparison_exp(void);
+static TreeNode* simple_exp(void);
+static TreeNode* term(void);
+static TreeNode* factor(void);
 
-static void syntaxError(char * message)
+static void syntaxError(const char* message)
 { fprintf(listing,"\n>>> ");
   fprintf(listing,"Syntax error at line %d: %s",lineno,message);
   Error = TRUE;
@@ -42,12 +47,12 @@ static void match(TokenType expected)
   }
 }
 
-TreeNode * stmt_sequence(void)
-{ TreeNode * t = statement();
-  TreeNode * p = t;
+TreeNode* stmt_sequence(void)
+{ TreeNode* t = statement();
+  TreeNode* p = t;
   while ((token!=ENDFILE) && (token!=END) &&
          (token!=ELSE) && (token!=UNTIL))
-  { TreeNode * q;
+  { TreeNode* q;
     match(SEMI);
     q = statement();
     if (q!=NULL) {
@@ -61,8 +66,8 @@ TreeNode * stmt_sequence(void)
   return t;
 }
 
-TreeNode * statement(void)
-{ TreeNode * t = NULL;
+TreeNode* statement(void)
+{ TreeNode* t = NULL;
   switch (token) {
     case IF : t = if_stmt(); break;
     case REPEAT : t = repeat_stmt(); break;
@@ -79,8 +84,8 @@ TreeNode * statement(void)
   return t;
 }
 
-TreeNode * if_stmt(void)
-{ TreeNode * t = newStmtNode(IfK);
+TreeNode* if_stmt(void)
+{ TreeNode* t = newStmtNode(IfK);
   match(IF);
   if (t!=NULL) t->child[0] = exp();
   match(THEN);
@@ -93,8 +98,8 @@ TreeNode * if_stmt(void)
   return t;
 }
 
-TreeNode * repeat_stmt(void)
-{ TreeNode * t = newStmtNode(RepeatK);
+TreeNode* repeat_stmt(void)
+{ TreeNode* t = newStmtNode(RepeatK);
   match(REPEAT);
   if (t!=NULL) t->child[0] = stmt_sequence();
   match(UNTIL);
@@ -102,8 +107,8 @@ TreeNode * repeat_stmt(void)
   return t;
 }
 
-TreeNode * assign_stmt(void)
-{ TreeNode * t = newStmtNode(AssignK);
+TreeNode* assign_stmt(void)
+{ TreeNode* t = newStmtNode(AssignK);
   if ((t!=NULL) && (token==ID))
     t->attr.name = copyString(tokenString);
   match(ID);
@@ -112,17 +117,22 @@ TreeNode * assign_stmt(void)
   return t;
 }
 
-TreeNode * read_stmt(void)
-{ TreeNode * t = newStmtNode(ReadK);
+TreeNode* read_stmt(void)
+{ TreeNode* t = newStmtNode(ReadK);
   match(READ);
+  if (token != ID)
+  { syntaxError("read statement requires a variable name -> ");
+    printToken(token,tokenString);
+    return NULL;
+  }
   if ((t!=NULL) && (token==ID))
     t->attr.name = copyString(tokenString);
   match(ID);
   return t;
 }
 
-TreeNode * write_stmt(void)
-{ TreeNode * t = newStmtNode(WriteK);
+TreeNode* write_stmt(void)
+{ TreeNode* t = newStmtNode(WriteK);
   match(WRITE);
   if (t!=NULL) t->child[0] = exp();
   return t;
@@ -133,22 +143,22 @@ TreeNode * write_stmt(void)
  * Uninitialized vars become IdK children; initialized
  * vars become AssignK children (with the expr as child[0]).
  */
-TreeNode * int_decl(void)
-{ TreeNode * t = newStmtNode(IntK);
+TreeNode* int_decl(void)
+{ TreeNode* t = newStmtNode(IntK);
   int i = 0;
   match(INT);
   while (token == ID && i < MAXCHILDREN)
-  { char * name = copyString(tokenString);
+  { char* name = copyString(tokenString);
     match(ID);
     if (token == ASSIGN)
-    { TreeNode * a = newStmtNode(AssignK);
+    { TreeNode* a = newStmtNode(AssignK);
       if (a != NULL) a->attr.name = name;
       match(ASSIGN);
       if (a != NULL) a->child[0] = exp();
       if (t != NULL) t->child[i++] = a;
     }
     else
-    { TreeNode * id = newExpNode(IdK);
+    { TreeNode* id = newExpNode(IdK);
       if (id != NULL) id->attr.name = name;
       if (t != NULL) t->child[i++] = id;
     }
@@ -159,22 +169,22 @@ TreeNode * int_decl(void)
 }
 
 /* float_decl parses: float ID [:= exp] {, ID [:= exp]} */
-TreeNode * float_decl(void)
-{ TreeNode * t = newStmtNode(FloatK);
+TreeNode* float_decl(void)
+{ TreeNode* t = newStmtNode(FloatK);
   int i = 0;
   match(FLOAT);
   while (token == ID && i < MAXCHILDREN)
-  { char * name = copyString(tokenString);
+  { char* name = copyString(tokenString);
     match(ID);
     if (token == ASSIGN)
-    { TreeNode * a = newStmtNode(AssignK);
+    { TreeNode* a = newStmtNode(AssignK);
       if (a != NULL) a->attr.name = name;
       match(ASSIGN);
       if (a != NULL) a->child[0] = exp();
       if (t != NULL) t->child[i++] = a;
     }
     else
-    { TreeNode * id = newExpNode(IdK);
+    { TreeNode* id = newExpNode(IdK);
       if (id != NULL) id->attr.name = name;
       if (t != NULL) t->child[i++] = id;
     }
@@ -184,10 +194,44 @@ TreeNode * float_decl(void)
   return t;
 }
 
-TreeNode * exp(void)
-{ TreeNode * t = simple_exp();
+TreeNode* exp(void)
+{ return logical_or_exp();
+}
+
+TreeNode* logical_or_exp(void)
+{ TreeNode* t = logical_and_exp();
+  while (token==OR)
+  { TreeNode* p = newExpNode(OpK);
+    if (p!=NULL) {
+      p->child[0] = t;
+      p->attr.op = token;
+      t = p;
+      match(token);
+      t->child[1] = logical_and_exp();
+    }
+  }
+  return t;
+}
+
+TreeNode* logical_and_exp(void)
+{ TreeNode* t = comparison_exp();
+  while (token==AND)
+  { TreeNode* p = newExpNode(OpK);
+    if (p!=NULL) {
+      p->child[0] = t;
+      p->attr.op = token;
+      t = p;
+      match(token);
+      t->child[1] = comparison_exp();
+    }
+  }
+  return t;
+}
+
+TreeNode* comparison_exp(void)
+{ TreeNode* t = simple_exp();
   if ((token==LT)||(token==LEQ)||(token==GT)||(token==GEQ)||(token==EQ)) {
-    TreeNode * p = newExpNode(OpK);
+    TreeNode* p = newExpNode(OpK);
     if (p!=NULL) {
       p->child[0] = t;
       p->attr.op = token;
@@ -200,10 +244,10 @@ TreeNode * exp(void)
   return t;
 }
 
-TreeNode * simple_exp(void)
-{ TreeNode * t = term();
+TreeNode* simple_exp(void)
+{ TreeNode* t = term();
   while ((token==PLUS)||(token==MINUS))
-  { TreeNode * p = newExpNode(OpK);
+  { TreeNode* p = newExpNode(OpK);
     if (p!=NULL) {
       p->child[0] = t;
       p->attr.op = token;
@@ -215,10 +259,10 @@ TreeNode * simple_exp(void)
   return t;
 }
 
-TreeNode * term(void)
-{ TreeNode * t = factor();
+TreeNode* term(void)
+{ TreeNode* t = factor();
   while ((token==TIMES)||(token==OVER))
-  { TreeNode * p = newExpNode(OpK);
+  { TreeNode* p = newExpNode(OpK);
     if (p!=NULL) {
       p->child[0] = t;
       p->attr.op = token;
@@ -230,8 +274,8 @@ TreeNode * term(void)
   return t;
 }
 
-TreeNode * factor(void)
-{ TreeNode * t = NULL;
+TreeNode* factor(void)
+{ TreeNode* t = NULL;
   switch (token) {
     case NUM :
       t = newExpNode(ConstK);
@@ -260,6 +304,15 @@ TreeNode * factor(void)
       if ((t!=NULL) && (token==ID))
         t->attr.name = copyString(tokenString);
       match(ID);
+      if (token == PP)
+      { TreeNode* p = newExpNode(OpK);
+        if (p!=NULL) {
+          p->child[0] = t;
+          p->attr.op = PP;
+          t = p;
+        }
+        match(PP);
+      }
       break;
     case LPAREN :
       match(LPAREN);
@@ -311,8 +364,8 @@ TreeNode * factor(void)
 /* Function parse returns the newly 
  * constructed syntax tree
  */
-TreeNode * parse(void)
-{ TreeNode * t;
+TreeNode* parse(void)
+{ TreeNode* t;
   token = getToken();
   t = stmt_sequence();
   if (token!=ENDFILE)

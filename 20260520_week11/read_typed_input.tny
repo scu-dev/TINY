@@ -1,0 +1,9 @@
+int count;
+float price;
+
+read count;
+read price;
+
+write count;
+write price;
+write count * price

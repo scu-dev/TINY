@@ -37,7 +37,8 @@ typedef enum {
 typedef enum {
    /* RR instructions */
    opHALT,    /* RR     halt, operands are ignored */
-   opIN,      /* RR     read into reg(r); s and t are ignored */
+   opIN,      /* RR     read integer into reg(r); s and t are ignored */
+   opINF,     /* RR     read float into reg(r); s and t are ignored */
    opOUT,     /* RR     write from reg(r), s and t are ignored */
    opOUTS,    /* RR     write string indexed by reg(r) */
    opADD,    /* RR     reg(r) = reg(s)+reg(t) */
@@ -89,21 +90,21 @@ INSTRUCTION iMem [IADDR_SIZE];
 double dMem [DADDR_SIZE];
 double reg [NO_REGS];
 
-char * opCodeTab[]
-        = {"HALT","IN","OUT","OUTS","ADD","SUB","MUL","DIV","????",
+char* opCodeTab[]
+        = {"HALT","IN","INF","OUT","OUTS","ADD","SUB","MUL","DIV","????",
             /* RR opcodes */
            "LD","ST","????", /* RM opcodes */
            "LDA","LDC","JLT","JLE","JGT","JGE","JEQ","JNE","????"
            /* RA opcodes */
           };
 
-char * stepResultTab[]
+char* stepResultTab[]
         = {"OK","Halted","Instruction Memory Fault",
            "Data Memory Fault","Division by 0"
           };
 
 char pgmName[20];
-FILE *pgm  ;
+FILE* pgm  ;
 
 char in_Line[LINESIZE] ;
 int lineLen ;
@@ -193,7 +194,7 @@ int getNum (void)
 
 /********************************************/
 int getFloatNum (void)
-{ char *endPtr;
+{ char* endPtr;
   if (! nonBlank()) return FALSE;
   fnum = strtod(&in_Line[inCol],&endPtr);
   if (endPtr == &in_Line[inCol]) return FALSE;
@@ -202,6 +203,30 @@ int getFloatNum (void)
   else ch = ' ';
   return TRUE;
 } /* getFloatNum */
+
+/********************************************/
+int getInputInteger (void)
+{ char* endPtr;
+  long value;
+  if (! nonBlank()) return FALSE;
+  value = strtol(&in_Line[inCol],&endPtr,10);
+  if (endPtr == &in_Line[inCol]) return FALSE;
+  while ((*endPtr == ' ') || (*endPtr == '\t')) endPtr++;
+  if (*endPtr != '\0') return FALSE;
+  num = (int)value;
+  return TRUE;
+} /* getInputInteger */
+
+/********************************************/
+int getInputFloat (void)
+{ char* endPtr;
+  if (! nonBlank()) return FALSE;
+  fnum = strtod(&in_Line[inCol],&endPtr);
+  if (endPtr == &in_Line[inCol]) return FALSE;
+  while ((*endPtr == ' ') || (*endPtr == '\t')) endPtr++;
+  if (*endPtr != '\0') return FALSE;
+  return TRUE;
+} /* getInputFloat */
 
 /********************************************/
 int getWord (void)
@@ -234,7 +259,7 @@ int atEOL(void)
 } /* atEOL */
 
 /********************************************/
-int error( char * msg, int lineNo, int instNo)
+int error( char* msg, int lineNo, int instNo)
 { printf("Line %d",lineNo);
   if (instNo >= 0) printf(" (Instruction %d)",instNo);
   printf("   %s\n",msg);
@@ -243,8 +268,8 @@ int error( char * msg, int lineNo, int instNo)
 
 /********************************************/
 void readStringComment(void)
-{ char *p = in_Line + inCol;
-  char *endPtr;
+{ char* p = in_Line + inCol;
+  char* endPtr;
   int index;
   int length = 0;
   if (strncmp(p,"* STR ",6) != 0) return;
@@ -434,7 +459,23 @@ STEPRESULT stepTM (void)
         gets(in_Line);
         lineLen = strlen(in_Line) ;
         inCol = 0;
-        ok = getFloatNum();
+        ok = getInputInteger();
+        if ( ! ok ) printf ("Illegal value\n");
+        else reg[r] = num;
+      }
+      while (! ok);
+      break;
+
+    case opINF :
+    /***********************************/
+      do
+      { printf("Enter value for INF instruction: ") ;
+        fflush (stdin);
+        fflush (stdout);
+        gets(in_Line);
+        lineLen = strlen(in_Line) ;
+        inCol = 0;
+        ok = getInputFloat();
         if ( ! ok ) printf ("Illegal value\n");
         else reg[r] = fnum;
       }
@@ -649,7 +690,7 @@ int doCommand (void)
 /* E X E C U T I O N   B E G I N S   H E R E */
 /********************************************/
 
-main( int argc, char * argv[] )
+main( int argc, char* argv[] )
 { if (argc != 2)
   { printf("usage: %s <filename>\n",argv[0]);
     exit(1);

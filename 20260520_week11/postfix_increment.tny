@@ -1,0 +1,10 @@
+int i := 2, oldi := i++;
+float f := 1.5, oldf := f++;
+
+write oldi;
+write i;
+write oldf;
+write f;
+write i++ + f++;
+write i;
+write f

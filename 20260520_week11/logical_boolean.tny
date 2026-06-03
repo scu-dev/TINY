@@ -1,0 +1,25 @@
+int a := 3, b := 5, side := 0;
+
+if a < b && b = 5 then
+  write 1
+else
+  write 0
+end;
+
+if a > b || side = 0 then
+  write 1
+else
+  write 0
+end;
+
+if a > b && side++ = 0 then
+  write 99
+else
+  write side
+end;
+
+if a < b || side++ = 0 then
+  write side
+else
+  write 99
+end

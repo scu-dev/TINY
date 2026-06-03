@@ -7,6 +7,9 @@
 /* Kenneth C. Louden                                */
 /****************************************************/
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "GLOBALS.H"
 #include "SYMTAB.H"
 #include "CODE.H"
@@ -20,9 +23,9 @@ static int tmpOffset = 0;
 static int stringCount = 0;
 
 /* prototype for internal recursive code generator */
-static void cGen (TreeNode * tree);
+static void cGen (TreeNode* tree);
 
-static void emitStringDefinition(int index, char * value)
+static void emitStringDefinition(int index, char* value)
 { int i;
   fprintf(code,"* STR %d \"",index);
   for (i = 0; value[i] != '\0'; i++)
@@ -33,15 +36,57 @@ static void emitStringDefinition(int index, char * value)
   fprintf(code,"\"\n");
 }
 
-static int addStringLiteral(char * value)
+static int addStringLiteral(char* value)
 { int index = stringCount++;
   emitStringDefinition(index,value);
   return index;
 }
 
+static void genLogicalAnd(TreeNode* tree)
+{ int leftFalseLoc,rightFalseLoc,endLoc,falseLoc,currentLoc;
+  cGen(tree->child[0]);
+  leftFalseLoc = emitSkip(1);
+  cGen(tree->child[1]);
+  rightFalseLoc = emitSkip(1);
+  emitRM("LDC",ac,1,0,"and: true case");
+  endLoc = emitSkip(1);
+  falseLoc = emitSkip(0);
+  emitRM("LDC",ac,0,0,"and: false case");
+  currentLoc = emitSkip(0);
+  emitBackup(leftFalseLoc);
+  emitRM_Abs("JEQ",ac,falseLoc,"and: left false");
+  emitBackup(rightFalseLoc);
+  emitRM_Abs("JEQ",ac,falseLoc,"and: right false");
+  emitBackup(endLoc);
+  emitRM_Abs("LDA",pc,currentLoc,"and: jmp to end");
+  emitRestore();
+}
+
+static void genLogicalOr(TreeNode* tree)
+{ int leftTrueLoc,rightTrueLoc,endLoc,trueLoc,currentLoc;
+  cGen(tree->child[0]);
+  leftTrueLoc = emitSkip(1);
+  cGen(tree->child[1]);
+  rightTrueLoc = emitSkip(1);
+  emitRM("LDC",ac,0,0,"or: false case");
+  endLoc = emitSkip(1);
+  trueLoc = emitSkip(0);
+  emitRM("LDC",ac,1,0,"or: true case");
+  currentLoc = emitSkip(0);
+  emitBackup(leftTrueLoc);
+  emitRM_Abs("JNE",ac,trueLoc,"or: left true");
+  emitBackup(rightTrueLoc);
+  emitRM_Abs("JNE",ac,trueLoc,"or: right true");
+  emitBackup(endLoc);
+  emitRM_Abs("LDA",pc,currentLoc,"or: jmp to end");
+  emitRestore();
+}
+
 /* Procedure genStmt generates code at a statement node */
-static void genStmt( TreeNode * tree)
-{ TreeNode * p1, * p2, * p3;
+static void genStmt( TreeNode* tree)
+{ TreeNode* p1;
+  TreeNode* p2;
+  TreeNode* p3;
   int savedLoc1,savedLoc2,currentLoc;
   int loc;
   switch (tree->kind.stmt) {
@@ -97,8 +142,11 @@ static void genStmt( TreeNode * tree)
          break; /* assign_k */
 
       case ReadK:
-         emitRO("IN",ac,0,0,"read integer value");
          loc = st_lookup(tree->attr.name);
+         if (st_lookup_type(tree->attr.name) == Float)
+            emitRO("INF",ac,0,0,"read float value");
+         else
+            emitRO("IN",ac,0,0,"read integer value");
          emitRM("ST",ac,loc,gp,"read: store value");
          break;
       case WriteK:
@@ -134,9 +182,10 @@ static void genStmt( TreeNode * tree)
 } /* genStmt */
 
 /* Procedure genExp generates code at an expression node */
-static void genExp( TreeNode * tree)
+static void genExp( TreeNode* tree)
 { int loc;
-  TreeNode * p1, * p2;
+  TreeNode* p1;
+  TreeNode* p2;
   switch (tree->kind.exp) {
 
     case ConstK :
@@ -163,6 +212,27 @@ static void genExp( TreeNode * tree)
          if (TraceCode) emitComment("-> Op") ;
          p1 = tree->child[0];
          p2 = tree->child[1];
+         if (tree->attr.op == PP) {
+            loc = st_lookup(p1->attr.name);
+            emitRM("LD",ac,loc,gp,"post++: load old value");
+            emitRM("ST",ac,tmpOffset--,mp,"post++: save old value");
+            emitRM("LDC",ac1,1,0,"post++: load increment");
+            emitRO("ADD",ac,ac,ac1,"post++: increment");
+            emitRM("ST",ac,loc,gp,"post++: store new value");
+            emitRM("LD",ac,++tmpOffset,mp,"post++: restore old value");
+            if (TraceCode) emitComment("<- Op") ;
+            break;
+         }
+         if (tree->attr.op == AND) {
+            genLogicalAnd(tree);
+            if (TraceCode) emitComment("<- Op") ;
+            break;
+         }
+         if (tree->attr.op == OR) {
+            genLogicalOr(tree);
+            if (TraceCode) emitComment("<- Op") ;
+            break;
+         }
          /* gen code for ac = left arg */
          cGen(p1);
          /* gen code to push left operand */
@@ -234,7 +304,7 @@ static void genExp( TreeNode * tree)
 /* Procedure cGen recursively generates code by
  * tree traversal
  */
-static void cGen( TreeNode * tree)
+static void cGen( TreeNode* tree)
 { if (tree != NULL)
   { switch (tree->nodekind) {
       case StmtK:
@@ -259,8 +329,8 @@ static void cGen( TreeNode * tree)
  * of the code file, and is used to print the
  * file name as a comment in the code file
  */
-void codeGen(TreeNode * syntaxTree, char * codefile)
-{  char * s = (char *)malloc(strlen(codefile)+7); // 20240329
+void codeGen(TreeNode* syntaxTree, char* codefile)
+{  char* s = (char*)malloc(strlen(codefile)+7); // 20240329
    strcpy(s,"File: ");
    strcat(s,codefile);
    emitComment("TINY Compilation to TM Code");

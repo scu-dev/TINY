@@ -18,9 +18,9 @@ static int location = 0;
  * it applies preProc in preorder and postProc 
  * in postorder to tree pointed to by t
  */
-static void traverse( TreeNode * t,
-               void (* preProc) (TreeNode *),
-               void (* postProc) (TreeNode *) )
+static void traverse( TreeNode* t,
+               void (*preProc) (TreeNode*),
+               void (*postProc) (TreeNode*) )
 { if (t != NULL)
   { preProc(t);
     { int i;
@@ -36,7 +36,7 @@ static void traverse( TreeNode * t,
  * generate preorder-only or postorder-only
  * traversals from traverse
  */
-static void nullProc(TreeNode * t)
+static void nullProc(TreeNode* t)
 { if (t==NULL) return;
   else return;
 }
@@ -45,7 +45,7 @@ static void nullProc(TreeNode * t)
  * identifiers stored in t into 
  * the symbol table 
  */
-static void insertNode( TreeNode * t)
+static void insertNode( TreeNode* t)
 { switch (t->nodekind)
   { case StmtK:
       switch (t->kind.stmt)
@@ -64,8 +64,8 @@ static void insertNode( TreeNode * t)
           { int i;
             ExpType declaredType = (t->kind.stmt == FloatK) ? Float : Integer;
             for (i = 0; i < MAXCHILDREN; i++)
-            { TreeNode * child = t->child[i];
-              char * name = NULL;
+            { TreeNode* child = t->child[i];
+              char* name = NULL;
               if (child == NULL) continue;
               if (child->nodekind == StmtK &&
                   child->kind.stmt == AssignK)
@@ -109,7 +109,7 @@ static void insertNode( TreeNode * t)
 /* Function buildSymtab constructs the symbol 
  * table by preorder traversal of the syntax tree
  */
-void buildSymtab(TreeNode * syntaxTree)
+void buildSymtab(TreeNode* syntaxTree)
 { traverse(syntaxTree,insertNode,nullProc);
   if (TraceAnalyze)
   { fprintf(listing,"\nSymbol table:\n\n");
@@ -117,7 +117,7 @@ void buildSymtab(TreeNode * syntaxTree)
   }
 }
 
-static void typeError(TreeNode * t, char * message)
+static void typeError(TreeNode* t, const char* message)
 { fprintf(listing,"Type error at line %d: %s\n",t->lineno,message);
   Error = TRUE;
 }
@@ -129,11 +129,31 @@ static int isNumeric(ExpType type)
 /* Procedure checkNode performs
  * type checking at a single tree node
  */
-static void checkNode(TreeNode * t)
+static void checkNode(TreeNode* t)
 { switch (t->nodekind)
   { case ExpK:
       switch (t->kind.exp)
       { case OpK:
+          if (t->attr.op == PP)
+          { if ((t->child[0] == NULL) ||
+                (t->child[0]->nodekind != ExpK) ||
+                (t->child[0]->kind.exp != IdK))
+              typeError(t,"++ applied to non-variable value");
+            else if (!isNumeric(t->child[0]->type))
+              typeError(t,"++ applied to non-numeric value");
+            if (t->child[0] != NULL)
+              t->type = t->child[0]->type;
+            else
+              t->type = Void;
+            break;
+          }
+          if ((t->attr.op == AND) || (t->attr.op == OR))
+          { if ((t->child[0]->type != Boolean) ||
+                (t->child[1]->type != Boolean))
+              typeError(t,"logical operator applied to non-Boolean value");
+            t->type = Boolean;
+            break;
+          }
           if (!isNumeric(t->child[0]->type) ||
               !isNumeric(t->child[1]->type))
             typeError(t,"Op applied to non-numeric value");
@@ -196,6 +216,6 @@ static void checkNode(TreeNode * t)
 /* Procedure typeCheck performs type checking 
  * by a postorder syntax tree traversal
  */
-void typeCheck(TreeNode * syntaxTree)
+void typeCheck(TreeNode* syntaxTree)
 { traverse(syntaxTree,nullProc,checkNode);
 }

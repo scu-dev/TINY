@@ -21,7 +21,7 @@
 #define SHIFT 4
 
 /* the hash function */
-static int hash ( char * key )
+static int hash ( char* key )
 { int temp = 0;
   int i = 0;
   while (key[i] != '\0')
@@ -36,8 +36,8 @@ static int hash ( char * key )
  */
 typedef struct LineListRec
    { int lineno;
-     struct LineListRec * next;
-   } * LineList;
+     struct LineListRec* next;
+   }* LineList;
 
 /* The record in the bucket lists for
  * each variable, including name, 
@@ -46,12 +46,12 @@ typedef struct LineListRec
  * it appears in the source code
  */
 typedef struct BucketListRec
-   { char * name;
+   { char* name;
      LineList lines;
      int memloc ; /* memory location for variable */
      ExpType type; /* declared type for type checking and codegen */
-     struct BucketListRec * next;
-   } * BucketList;
+     struct BucketListRec* next;
+   }* BucketList;
 
 /* the hash table */
 static BucketList hashTable[SIZE];
@@ -61,7 +61,7 @@ static BucketList hashTable[SIZE];
  * loc = memory location is inserted only the
  * first time, otherwise ignored
  */
-void st_insert_typed( char * name, int lineno, int loc, ExpType type )
+void st_insert_typed( char* name, int lineno, int loc, ExpType type )
 { int h = hash(name);
   BucketList l =  hashTable[h];
   while ((l != NULL) && (strcmp(name,l->name) != 0))
@@ -85,14 +85,14 @@ void st_insert_typed( char * name, int lineno, int loc, ExpType type )
   }
 } /* st_insert */
 
-void st_insert( char * name, int lineno, int loc )
+void st_insert( char* name, int lineno, int loc )
 { st_insert_typed(name,lineno,loc,Integer);
 } /* st_insert */
 
 /* Function st_lookup returns the memory 
  * location of a variable or -1 if not found
  */
-int st_lookup ( char * name )
+int st_lookup ( char* name )
 { int h = hash(name);
   BucketList l =  hashTable[h];
   while ((l != NULL) && (strcmp(name,l->name) != 0))
@@ -101,7 +101,7 @@ int st_lookup ( char * name )
   else return l->memloc;
 }
 
-ExpType st_lookup_type ( char * name )
+ExpType st_lookup_type ( char* name )
 { int h = hash(name);
   BucketList l =  hashTable[h];
   while ((l != NULL) && (strcmp(name,l->name) != 0))
@@ -114,7 +114,7 @@ ExpType st_lookup_type ( char * name )
  * listing of the symbol table contents 
  * to the listing file
  */
-void printSymTab(FILE * listing)
+void printSymTab(FILE* listing)
 { int i;
   fprintf(listing,"Variable Name  Location   Type      Line Numbers\n");
   fprintf(listing,"-------------  --------   ----      ------------\n");
