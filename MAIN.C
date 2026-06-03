@@ -7,6 +7,7 @@
 
 #include "GLOBALS.H"
 #include "MAKEDOT.H"
+#include "MAKETAC.H"
 #include "UTIL.H"
 
 #include <stdlib.h>
@@ -46,60 +47,65 @@ int TraceCode = FALSE;
 
 int Error = FALSE;
 
-static char* fileNamePart(char* path) {
-    char* slash = strrchr(path, '/');
-    char* backslash = strrchr(path, '\\');
-    char* name = path;
-    if ((slash != NULL) && (slash + 1 > name)) name = slash + 1;
-    if ((backslash != NULL) && (backslash + 1 > name)) name = backslash + 1;
-    return name;
-}
-
-static int hasFileExtension(char* path) {
-    char* name = fileNamePart(path);
-    return (strchr(name, '.') != NULL);
-}
-
-static char* outputFileName(char* inputFile, const char* extension) {
-    char* name = fileNamePart(inputFile);
-    char* dot = strrchr(name, '.');
-    int fnlen;
-    char* outputFile;
-    if (dot != NULL) fnlen = (int)(dot - inputFile);
-    else fnlen = (int)strlen(inputFile);
-    outputFile = (char*)calloc(fnlen + (int)strlen(extension) + 1, sizeof(char));
-    strncpy(outputFile, inputFile, fnlen);
-    strcat(outputFile, extension);
-    return outputFile;
+static void printUsage(const char* programName) {
+    fprintf(stderr, "usage: %s <source-file> <code-output-file> [--dot <dot-output-file>] [--tac <tac-output-file>]\n", programName);
 }
 
 int main(int argc, char* argv[]) {
     TreeNode* syntaxTree;
-    char pgm[120]; /* Source code file name */
-    char* sourceArg = NULL;
-    int generateDot = FALSE;
+    char* sourceArg;
+    char* codefile;
+    char* dotfile = NULL;
+    char* tacfile = NULL;
     int argIndex;
-    for (argIndex = 1; argIndex < argc; argIndex++) {
-        if (strcmp(argv[argIndex], "--dot") == 0) generateDot = TRUE;
-        else if (sourceArg == NULL) sourceArg = argv[argIndex];
+
+    if (argc < 3) {
+        fprintf(stderr, "Missing source or code output file\n");
+        printUsage(argv[0]);
+        exit(1);
+    }
+    sourceArg = argv[1];
+    codefile = argv[2];
+    for (argIndex = 3; argIndex < argc; argIndex++) {
+        if (strcmp(argv[argIndex], "--dot") == 0) {
+            if (dotfile != NULL) {
+                fprintf(stderr, "--dot specified more than once\n");
+                printUsage(argv[0]);
+                exit(1);
+            }
+            if (++argIndex >= argc) {
+                fprintf(stderr, "Missing output file after --dot\n");
+                printUsage(argv[0]);
+                exit(1);
+            }
+            dotfile = argv[argIndex];
+        }
+        else if (strcmp(argv[argIndex], "--tac") == 0) {
+            if (tacfile != NULL) {
+                fprintf(stderr, "--tac specified more than once\n");
+                printUsage(argv[0]);
+                exit(1);
+            }
+            if (++argIndex >= argc) {
+                fprintf(stderr, "Missing output file after --tac\n");
+                printUsage(argv[0]);
+                exit(1);
+            }
+            tacfile = argv[argIndex];
+        }
         else {
-            fprintf(stderr, "usage: %s [--dot] <filename>\n", argv[0]);
+            fprintf(stderr, "Unknown option: %s\n", argv[argIndex]);
+            printUsage(argv[0]);
             exit(1);
         }
     }
-    if (sourceArg == NULL) {
-        fprintf(stderr, "usage: %s [--dot] <filename>\n", argv[0]);
-        exit(1);
-    }
-    strcpy(pgm, sourceArg);
-    if (!hasFileExtension(pgm)) strcat(pgm, ".tny");
-    source = fopen(pgm, "r");
+    fopen_s(&source, sourceArg, "r");
     if (source == NULL) {
-        fprintf(stderr, "File %s not found\n", pgm);
+        fprintf(stderr, "File %s not found\n", sourceArg);
         exit(1);
     }
     listing = stdout; /* Send listing to screen */
-    fprintf(listing, "\nTINY COMPILATION: %s\n", pgm);
+    fprintf(listing, "\nTINY COMPILATION: %s\n", sourceArg);
 #if NO_PARSE
     while (getToken() != ENDFILE);
 #else
@@ -108,11 +114,13 @@ int main(int argc, char* argv[]) {
         fprintf(listing, "\nSyntax tree:\n");
         printTree(syntaxTree);
     }
-    if (generateDot) {
-        char* dotfile = outputFileName(pgm, ".dot");
+    if (dotfile != NULL) {
         outputGraphvizFormat(dotfile, syntaxTree);
         fprintf(listing, "AST written to: %s\n", dotfile);
-        free(dotfile);
+    }
+    if (tacfile != NULL) {
+        outputTACFormat(tacfile, syntaxTree);
+        fprintf(listing, "Three-address code written to: %s\n", tacfile);
     }
 #if !NO_ANALYZE
     if (!Error) {
@@ -124,8 +132,6 @@ int main(int argc, char* argv[]) {
     }
 #if !NO_CODE
     if (!Error) {
-        char* codefile;
-        codefile = outputFileName(pgm, ".tm");
         code = fopen(codefile, "w");
         if (code == NULL) {
             printf("Unable to open %s\n", codefile);

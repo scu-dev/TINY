@@ -1,0 +1,12 @@
+a = 2
+b = 3
+c = 4
+t0 = b * c
+t1 = a + t0
+x = t1
+t2 = a + b
+t3 = t2 * c
+y = t3
+t4 = y / 2
+t5 = x - t4
+z = t5

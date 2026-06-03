@@ -1,0 +1,6 @@
+int a := 2, b := 3, c := 4;
+int x, y, z;
+
+x := a + b * c;
+y := (a + b) * c;
+z := x - y / 2
