@@ -1,15 +1,12 @@
+#ifndef _MAKEDOT_H_
+#define _MAKEDOT_H_
+
 #include "GLOBALS.H"
 
-/*
-用于递归输出Graphviz(DOT语言)文件
-输入：输出流、语法树“根节点”、递归深度（仅用作打印记号）
-输出：指定路径的Graphviz(DOT语言)文件
-*/
+/* Procedure `CreateGraphvizFormat` recursively writes Graphviz DOT nodes and edges for the syntax tree. */
 void CreateGraphvizFormat(FILE* pf, TreeNode* syntaxtree, unsigned depth);
 
-/*
-输出Graphviz(DOT语言)文件
-输入：输出文件路径
-输出：指定路径的Graphviz(DOT语言)文件
-*/
+/* Procedure `outputGraphvizFormat` writes the syntax tree to a Graphviz DOT file. */
 void outputGraphvizFormat(const char* outputFilePath, TreeNode* syntaxtree);
+
+#endif
